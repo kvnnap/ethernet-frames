@@ -38,7 +38,7 @@ void send_frame(const char* ifaceName, uint8_t destMac[ETH_ALEN], const char* ms
 
     /* Open RAW socket to send on */
     // Why IPPROTO_RAW? Try htons(ETH_P_ALL) later
-    if ((sockfd = socket(AF_PACKET, SOCK_RAW, IPPROTO_RAW)) == -1) {
+    if ((sockfd = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ALL))) == -1) {
         perror("socket");
         return;
     }
@@ -70,11 +70,8 @@ void send_frame(const char* ifaceName, uint8_t destMac[ETH_ALEN], const char* ms
     tx_len += strlen(msg);
 
     /* Index of the network device */
+    memset(&socket_address, 0, sizeof(socket_address));
     socket_address.sll_ifindex = if_idx.ifr_ifindex;
-    /* Address length*/
-    socket_address.sll_halen = ETH_ALEN;
-    /* Destination MAC */
-    memcpy(socket_address.sll_addr, destMac, ETH_ALEN * sizeof(uint8_t));
 
     /* Send packet */
     if (sendto(sockfd, sendbuf, tx_len, 0, (struct sockaddr*)&socket_address, sizeof(socket_address)) < 0)
@@ -134,7 +131,7 @@ void recv_frame (const char* ifaceName, uint8_t destMac[ETH_ALEN]) {
         for (size_t i = 0; i < ETH_ALEN; ++i) {
             printf("%x ", eh->ether_dhost[i]);
         }
-        printf("\nEtherType: %u\n", ntohs(eh->ether_type));
+        printf("\nEtherType: %x\n", ntohs(eh->ether_type));
     }
 
     close(sockfd);
