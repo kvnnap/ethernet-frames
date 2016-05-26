@@ -29,7 +29,7 @@ void send_frame(const char* ifaceName, uint8_t destMac[ETH_ALEN], const char* ms
     size_t tx_len = 0;
     char sendbuf[BUF_SIZ];
     struct ether_header *eh = (struct ether_header *) sendbuf;
-    struct iphdr *iph = (struct iphdr *) (sendbuf + sizeof(*eh));
+    //struct iphdr *iph = (struct iphdr *) (sendbuf + sizeof(*eh));
     struct sockaddr_ll socket_address;
     char ifName[IFNAMSIZ];
 
@@ -74,7 +74,7 @@ void send_frame(const char* ifaceName, uint8_t destMac[ETH_ALEN], const char* ms
     /* Address length*/
     socket_address.sll_halen = ETH_ALEN;
     /* Destination MAC */
-    memcpy(socket_address.sll_addr, destMac, sizeof(destMac));
+    memcpy(socket_address.sll_addr, destMac, ETH_ALEN * sizeof(uint8_t));
 
     /* Send packet */
     if (sendto(sockfd, sendbuf, tx_len, 0, (struct sockaddr*)&socket_address, sizeof(socket_address)) < 0)
@@ -97,7 +97,7 @@ void recv_frame (const char* ifaceName, uint8_t destMac[ETH_ALEN]) {
 
     /* Open PF_PACKET socket, listening for EtherType ETH_P_IP*/
     // Using ETH_P_ALL instead for EtherType. This is used to filter by EtherType
-    if ((sockfd = socket(PF_PACKET, SOCK_RAW, htons(ETH_P_IP))) == -1) {
+    if ((sockfd = socket(PF_PACKET, SOCK_RAW, htons(ETH_P_ALL))) == -1) {
         perror("listener: socket");
         return;
     }
@@ -120,9 +120,21 @@ void recv_frame (const char* ifaceName, uint8_t destMac[ETH_ALEN]) {
             us &= eh->ether_dhost[i] == destMac[i];
         }
 
-        if (us) {
-            printf("received: For us!\n");
+        if (!us) {
+            continue;
         }
+
+        printf("received: For us! %ldbytes\n", numBytes);
+        // Print frame
+        printf("Source MAC: ");
+        for (size_t i = 0; i < ETH_ALEN; ++i) {
+            printf("%x ", eh->ether_shost[i]);
+        }
+        printf("\nDestination MAC: ");
+        for (size_t i = 0; i < ETH_ALEN; ++i) {
+            printf("%x ", eh->ether_dhost[i]);
+        }
+        printf("\nEtherType: %ud\n", eh->ether_type);
     }
 
     close(sockfd);
