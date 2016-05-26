@@ -134,7 +134,7 @@ void recv_frame (const char* ifaceName, uint8_t destMac[ETH_ALEN]) {
         for (size_t i = 0; i < ETH_ALEN; ++i) {
             printf("%x ", eh->ether_dhost[i]);
         }
-        printf("\nEtherType: %u\n", eh->ether_type);
+        printf("\nEtherType: %u\n", ntohs(eh->ether_type));
     }
 
     close(sockfd);
