@@ -13,15 +13,12 @@
 #include <getopt.h>
 #include <cstring>
 
-#define MY_DEST_MAC0	0x00
-#define MY_DEST_MAC1	0x00
-#define MY_DEST_MAC2	0x00
-#define MY_DEST_MAC3	0x00
-#define MY_DEST_MAC4	0x00
-#define MY_DEST_MAC5	0x00
-
 #define DEFAULT_IF	"eth0"
 #define BUF_SIZ		1024
+
+/* Adapted from https://gist.github.com/austinmarton/1922600
+ * and     from https://gist.github.com/austinmarton/2862515
+ */
 
 void send_frame(const char* ifaceName, uint8_t destMac[ETH_ALEN], const char* msg) {
 
@@ -29,7 +26,7 @@ void send_frame(const char* ifaceName, uint8_t destMac[ETH_ALEN], const char* ms
     struct ifreq if_idx;
     struct ifreq if_mac;
 
-    int tx_len = 0;
+    size_t tx_len = 0;
     char sendbuf[BUF_SIZ];
     struct ether_header *eh = (struct ether_header *) sendbuf;
     struct iphdr *iph = (struct iphdr *) (sendbuf + sizeof(*eh));
@@ -195,5 +192,5 @@ int main(int argc, char *argv[])
         recv_frame(interfaceName.c_str(), destMac);
     }
 
-    return 0;
+    return EXIT_SUCCESS;
 }
