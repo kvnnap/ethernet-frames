@@ -16,130 +16,19 @@
 #define DEFAULT_IF	"eth0"
 #define BUF_SIZ		1024
 
+#include <vector>
+#include <stdexcept>
+#include "EthernetSocket.h"
+
 /* Adapted from https://gist.github.com/austinmarton/1922600
  * and     from https://gist.github.com/austinmarton/2862515
  */
 
-void send_frame(const char* ifaceName, uint8_t destMac[ETH_ALEN], const char* msg) {
-
-    int sockfd;
-    struct ifreq if_idx;
-    struct ifreq if_mac;
-
-    size_t tx_len = 0;
-    char sendbuf[BUF_SIZ];
-    struct ether_header *eh = (struct ether_header *) sendbuf;
-    //struct iphdr *iph = (struct iphdr *) (sendbuf + sizeof(*eh));
-    struct sockaddr_ll socket_address;
-    char ifName[IFNAMSIZ];
-
-    /* Get interface name */
-    strncpy(ifName, ifaceName, sizeof(ifName));
-
-    /* Open RAW socket to send on */
-    // Why IPPROTO_RAW? Try htons(ETH_P_ALL) later
-    if ((sockfd = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ALL))) == -1) {
-        perror("socket");
-        return;
-    }
-
-    // could probably merge into one structure
-    /* Get the index of the interface to send on */
-    memset(&if_idx, 0, sizeof(struct ifreq));
-    strncpy(if_idx.ifr_name, ifName, IFNAMSIZ-1);
-    if (ioctl(sockfd, SIOCGIFINDEX, &if_idx) < 0)
-        perror("SIOCGIFINDEX");
-
-    /* Get the MAC address of the interface to send on */
-    memset(&if_mac, 0, sizeof(struct ifreq));
-    strncpy(if_mac.ifr_name, ifName, IFNAMSIZ-1);
-    if (ioctl(sockfd, SIOCGIFHWADDR, &if_mac) < 0)
-        perror("SIOCGIFHWADDR");
-
-    /* Construct the Ethernet header */
-    memset(sendbuf, 0, BUF_SIZ);
-    /* Ethernet header */
-    memcpy(eh->ether_shost, if_mac.ifr_hwaddr.sa_data, sizeof(eh->ether_shost));
-    memcpy(eh->ether_dhost, destMac, sizeof(eh->ether_dhost));
-    /* Ethertype field */
-    eh->ether_type = htons(ETH_P_IP);
-    tx_len += sizeof(*eh);
-
-    /* Packet data */
-    mempcpy(sendbuf + tx_len, msg, strlen(msg));
-    tx_len += strlen(msg);
-
-    /* Index of the network device */
-    memset(&socket_address, 0, sizeof(socket_address));
-    socket_address.sll_ifindex = if_idx.ifr_ifindex;
-
-    /* Send packet */
-    if (sendto(sockfd, sendbuf, tx_len, 0, (struct sockaddr*)&socket_address, sizeof(socket_address)) < 0)
-        printf("Send failed\n");
-
-    close(sockfd);
-}
-
-void recv_frame (const char* ifaceName, uint8_t destMac[ETH_ALEN]) {
-    uint8_t buf[BUF_SIZ];
-    int sockfd;
-
-    char ifName[IFNAMSIZ];
-
-    /* Get interface name */
-    strncpy(ifName, ifaceName, sizeof(ifName));
-
-    /* Header structures */
-    struct ether_header *eh = (struct ether_header *) buf;
-
-    /* Open PF_PACKET socket, listening for EtherType ETH_P_IP*/
-    // Using ETH_P_ALL instead for EtherType. This is used to filter by EtherType
-    if ((sockfd = socket(PF_PACKET, SOCK_RAW, htons(ETH_P_ALL))) == -1) {
-        perror("listener: socket");
-        return;
-    }
-
-    /* Bind to device */
-    if (setsockopt(sockfd, SOL_SOCKET, SO_BINDTODEVICE, ifName, IFNAMSIZ-1) == -1)	{
-        perror("SO_BINDTODEVICE");
-        close(sockfd);
-        exit(EXIT_FAILURE);
-    }
-
-    ssize_t numBytes;
-    printf("listener: Waiting to recvfrom...\n");
-
-    while((numBytes = recvfrom(sockfd, buf, sizeof(buf), 0, NULL, NULL)) != -1) {
-        //printf("received: %d bytes\n", numBytes);
-
-        bool us = true;
-        for (size_t i = 0; i < sizeof(destMac); ++i) {
-            us &= eh->ether_dhost[i] == destMac[i];
-        }
-
-        if (!us) {
-            continue;
-        }
-
-        printf("received: For us! %ldbytes\n", numBytes);
-        // Print frame
-        printf("Source MAC: ");
-        for (size_t i = 0; i < ETH_ALEN; ++i) {
-            printf("%x ", eh->ether_shost[i]);
-        }
-        printf("\nDestination MAC: ");
-        for (size_t i = 0; i < ETH_ALEN; ++i) {
-            printf("%x ", eh->ether_dhost[i]);
-        }
-        printf("\nEtherType: %x\n", ntohs(eh->ether_type));
-    }
-
-    close(sockfd);
-}
+using namespace std;
+using namespace Network;
 
 int main(int argc, char *argv[])
 {
-    using namespace std;
 
     string interfaceName = DEFAULT_IF;
     bool isSender = true;
@@ -191,14 +80,30 @@ int main(int argc, char *argv[])
         return EXIT_SUCCESS;
     }
 
-    uint8_t destMac[ETH_ALEN] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+    try {
 
-    if (isSender) {
-        cout << "Starting up as Sender" << endl;
-        send_frame(interfaceName.c_str(), destMac, "Hello");
-    } else {
-        cout << "Starting up as Receiver" << endl;
-        recv_frame(interfaceName.c_str(), destMac);
+        cout << "Sizes: EF: " << sizeof(EthernetFrame) << ", MAC: " << sizeof(MacAddress) << endl;
+        cout << "Sizes Original: EF " << sizeof(ether_header) << endl;
+
+        EthernetSocket es (interfaceName);
+
+        if (isSender) {
+            cout << "Starting up as Sender" << endl;
+            EthernetFrame ef;
+            ef.destinationMac = MacAddress::GetBroadcastMac();
+            ef.setEtherType(ETH_P_IP);
+            //ef.etherType = ;
+            es.send(ef, vector<u_int8_t>(1, 65));
+            //send_frame(interfaceName.c_str(), destMac, "Hello");
+        } else {
+            cout << "Starting up as Receiver" << endl;
+            es.recv();
+            //recv_frame(interfaceName.c_str(), destMac);
+        }
+
+    } catch(const exception& ex) {
+        cout << ex.what() << endl;
+        return EXIT_FAILURE;
     }
 
     return EXIT_SUCCESS;
