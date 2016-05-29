@@ -83,8 +83,8 @@ int main(int argc, char *argv[])
 
     try {
 
-        cout << "Sizes: EF: " << sizeof(EthernetFrame) << ", MAC: " << sizeof(MacAddress) << endl;
-        cout << "Sizes Original: EF " << sizeof(ether_header) << endl;
+        //cout << "Sizes: EF: " << sizeof(EthernetFrame) << ", MAC: " << sizeof(MacAddress) << endl;
+        //cout << "Sizes Original: EF " << sizeof(ether_header) << endl;
 
         EthernetSocket es (interfaceName);
         EthernetDiscovery ed (es);

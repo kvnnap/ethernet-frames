@@ -96,7 +96,7 @@ void EthernetSocket::send(EthernetFrame &ef, const std::vector<u_int8_t> &data) 
     }
 }
 
-ssize_t EthernetSocket::receive(const MacAddress * source, const MacAddress * destination, uint16_t type, ISocketListener * iSocketListener) {
+ssize_t EthernetSocket::receive(ISocketListener * iSocketListener, const MacAddress * destination, const MacAddress * source) {
     ssize_t numBytes;//, validMsgBytes = 0;
 
     while((numBytes = recvfrom(sockfd, receiveBuffer.data(), receiveBuffer.size(), 0, NULL, NULL)) != -1) {
@@ -110,7 +110,7 @@ ssize_t EthernetSocket::receive(const MacAddress * source, const MacAddress * de
         EthernetFrame * ef = &eff;
 
         if (
-                   (type != 0 && ef->getEtherType() != type)
+                   (ef->getEtherType() != CUSTOM_ETH_TYPE)
                 || (destination && ef->destinationMac != *destination)
                 || (source && ef->sourceMac != *source)
             )
@@ -127,7 +127,13 @@ ssize_t EthernetSocket::receive(const MacAddress * source, const MacAddress * de
     }
 
     // Error stage
-    return numBytes;
+
+    // exit due to timeout
+    if (errno == EAGAIN || errno == EWOULDBLOCK) {
+        return numBytes;
+    }
+
+    throw runtime_error(string("read error: ") + strerror(errno));
 }
 
 std::vector<u_int8_t> &EthernetSocket::getReceiveBuffer() {

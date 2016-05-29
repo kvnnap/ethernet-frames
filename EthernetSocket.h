@@ -6,7 +6,7 @@
 #define NETWORK_DISCOVERY_ETHERNETSOCKET_H
 
 #define BUFFER_SIZE 1024
-#define CUSTOM_ETH_TYPE 0x88b5
+#define CUSTOM_ETH_TYPE ETH_P_802_EX1
 
 #include <linux/if_packet.h>
 
@@ -24,7 +24,7 @@ namespace Network {
     public:
         // Initialises an Ethernet Socket on the interface provided
         EthernetSocket(const std::string& p_interfaceName);
-        virtual ~EthernetSocket();
+        ~EthernetSocket();
 
         std::vector<u_int8_t>& getReceiveBuffer();
         void setReceiveTimeout(uint8_t timeout);
@@ -32,7 +32,7 @@ namespace Network {
         //void setReceiveDataHandler(ISocketListener * iSockListener);
 
         void send(EthernetFrame& ef, const std::vector<u_int8_t>& data);
-        ssize_t receive(const MacAddress * source, const MacAddress * destination, uint16_t type, ISocketListener * iSocketListener);
+        ssize_t receive(ISocketListener * iSocketListener, const MacAddress * destination = nullptr, const MacAddress * source = nullptr);
     private:
         std::string interfaceName;
         int sockfd;
