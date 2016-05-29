@@ -19,7 +19,7 @@ bool EthernetDiscovery::dataArrival(Network::EthernetFrame &ef, uint8_t *data, s
                 EthernetFrame replyEf;
                 replyEf.destinationMac = ef.sourceMac;
                 replyEf.sourceMac = ethernetSocket.getInterfaceMac();
-                ethernetSocket.send(ef, {MessageType::HELLO});
+                ethernetSocket.send(replyEf, {MessageType::HELLO});
             } else {
                 // Add to list - Verify that we are master
                 slaveMacs.push_back(ef.sourceMac);
