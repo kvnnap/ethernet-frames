@@ -6,6 +6,7 @@
 #define NETWORK_DISCOVERY_ETHERNETSOCKET_H
 
 #define BUFFER_SIZE 1024
+#define CUSTOM_ETH_TYPE 0x88b5
 
 #include <linux/if_packet.h>
 

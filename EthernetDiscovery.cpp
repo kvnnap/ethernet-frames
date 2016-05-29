@@ -89,12 +89,11 @@ void EthernetDiscovery::getAllDevices() {
     // Send a broadcast packet to everyone
     EthernetFrame ef;
     ef.destinationMac = MacAddress::GetBroadcastMac();
-    ef.setEtherType(ETH_P_ALL);
     ethernetSocket.send(ef, {MessageType::HELLO});
 
     // Receive the messages with destination Mac equivalent to ours
     ethernetSocket.setReceiveTimeout(2);
-    ethernetSocket.receive(nullptr, &ethernetSocket.getInterfaceMac(), ETH_P_ALL, this);
+    ethernetSocket.receive(nullptr, &ethernetSocket.getInterfaceMac(), CUSTOM_ETH_TYPE, this);
     ethernetSocket.setReceiveTimeout(0);
 
     // Print vector
@@ -105,7 +104,7 @@ void EthernetDiscovery::getAllDevices() {
 }
 
 void EthernetDiscovery::slave() {
-    ethernetSocket.receive(nullptr, nullptr, ETH_P_ALL, this);
+    ethernetSocket.receive(nullptr, nullptr, CUSTOM_ETH_TYPE, this);
 }
 
 

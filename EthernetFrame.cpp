@@ -5,13 +5,14 @@
 #include <arpa/inet.h>
 
 #include "EthernetFrame.h"
+#include "EthernetSocket.h"
 
 using namespace std;
 using namespace Network;
 
 EthernetFrame::EthernetFrame()
 {
-    setEtherType(ETH_P_ALL);
+    setEtherType(CUSTOM_ETH_TYPE);
 }
 
 EthernetFrame::EthernetFrame(const u_int8_t *src) {

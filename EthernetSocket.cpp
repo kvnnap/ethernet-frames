@@ -30,7 +30,7 @@ EthernetSocket::EthernetSocket(const string &p_interfaceName)
     }
 
     // Open RAW socket to send on
-    if ((sockfd = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ALL))) == -1) {
+    if ((sockfd = socket(AF_PACKET, SOCK_RAW, htons(CUSTOM_ETH_TYPE))) == -1) {
         throw invalid_argument(strerror(errno));
     }
 
