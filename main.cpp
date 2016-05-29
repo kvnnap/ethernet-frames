@@ -19,6 +19,7 @@
 #include <vector>
 #include <stdexcept>
 #include "EthernetSocket.h"
+#include "EthernetDiscovery.h"
 
 /* Adapted from https://gist.github.com/austinmarton/1922600
  * and     from https://gist.github.com/austinmarton/2862515
@@ -86,18 +87,22 @@ int main(int argc, char *argv[])
         cout << "Sizes Original: EF " << sizeof(ether_header) << endl;
 
         EthernetSocket es (interfaceName);
+        EthernetDiscovery ed (es);
 
         if (isSender) {
-            cout << "Starting up as Sender" << endl;
-            EthernetFrame ef;
+            cout << "Starting up as Master" << endl;
+            /*EthernetFrame ef;
             ef.destinationMac = MacAddress::GetBroadcastMac();
             ef.setEtherType(ETH_P_IP);
             //ef.etherType = ;
-            es.send(ef, vector<u_int8_t>(1, 65));
+            es.send(ef, vector<u_int8_t>(1, 65)); */
             //send_frame(interfaceName.c_str(), destMac, "Hello");
+
+            ed.getAllDevices();
         } else {
-            cout << "Starting up as Receiver" << endl;
-            es.recv();
+            cout << "Starting up as Slave" << endl;
+            ed.slave();
+            //es.recv();
             //recv_frame(interfaceName.c_str(), destMac);
         }
 

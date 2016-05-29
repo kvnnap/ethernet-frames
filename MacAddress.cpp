@@ -57,6 +57,10 @@ MacAddress MacAddress::GetBroadcastMac() {
     return MacAddress(destMac);
 }
 
+bool MacAddress::operator!=(const MacAddress &other) const {
+    return !(*this == other);
+}
+
 ostream& Network::operator<<(ostream &strm, const MacAddress &mac) {
     char buff[18];
     const Mac& macAddr = mac.getMacArray();

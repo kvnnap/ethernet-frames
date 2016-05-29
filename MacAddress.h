@@ -14,6 +14,7 @@ namespace Network {
 
     typedef std::array<u_int8_t, ETH_ALEN> Mac;
 
+#pragma pack(push, 1)
     class MacAddress {
     public:
 
@@ -21,6 +22,7 @@ namespace Network {
         MacAddress(const Mac& p_mac);
 
         bool operator==(const MacAddress& other) const;
+        bool operator!=(const MacAddress& other) const;
         bool isUnset() const;
 
         const Mac& getMacArray() const;
@@ -37,6 +39,7 @@ namespace Network {
     private:
         Mac mac;
     };
+#pragma pack(pop)
 
     std::ostream& operator<< (std::ostream& strm, const MacAddress& mac);
 

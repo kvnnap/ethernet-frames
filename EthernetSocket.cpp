@@ -17,7 +17,6 @@
 #include <iostream>
 #include <stdexcept>
 
-#include "MacAddress.h"
 
 using namespace std;
 using namespace Network;
@@ -97,24 +96,59 @@ void EthernetSocket::send(EthernetFrame &ef, const std::vector<u_int8_t> &data) 
     }
 }
 
-
-void EthernetSocket::recv() {
-    ssize_t numBytes;
-
-    MacAddress broadcastAddress = MacAddress::GetBroadcastMac();
+ssize_t EthernetSocket::receive(const MacAddress * source, const MacAddress * destination, uint16_t type, ISocketListener * iSocketListener) {
+    ssize_t numBytes;//, validMsgBytes = 0;
 
     while((numBytes = recvfrom(sockfd, receiveBuffer.data(), receiveBuffer.size(), 0, NULL, NULL)) != -1) {
-        //printf("received: %d bytes\n", numBytes);
+        // We need to make sure we don't break strict type-aliasing rules
+        // Check whether G++ guarantees type-punning using union
+        // The standard does not allow it for sure
+        //EthernetFrame * ef = (EthernetFrame *) receiveBuffer.data();
 
         EthernetFrame eff (receiveBuffer.data());
 
         EthernetFrame * ef = &eff;
 
-        //EthernetFrame * ef = (EthernetFrame *) receiveBuffer.data();
-
-        if (ef->getEtherType() == ETH_P_IP && ef->destinationMac == broadcastAddress) {
-            // Process stuff
-            cout << "Received Broadcast: Size: " << numBytes << " EF: " << endl << *ef << endl;
+        if (
+                   (type != 0 && ef->getEtherType() != type)
+                || (destination && ef->destinationMac != *destination)
+                || (source && ef->sourceMac != *source)
+            )
+        {
+            continue;
         }
+
+        // Process stuff
+        if (iSocketListener->dataArrival(*ef, (uint8_t*)(receiveBuffer.data() + sizeof(*ef)), numBytes - sizeof(*ef))) {
+            continue;
+        }
+
+        return numBytes;
     }
+
+    // Error stage
+    return numBytes;
 }
+
+std::vector<u_int8_t> &EthernetSocket::getReceiveBuffer() {
+    return receiveBuffer;
+}
+
+void EthernetSocket::setReceiveTimeout(uint8_t timeout) {
+    // set timeout
+    struct timeval tv { timeout, 0 };
+    setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, (char *)&tv, sizeof(tv));
+}
+
+const MacAddress &EthernetSocket::getInterfaceMac() const {
+    return interfaceMac;
+}
+
+/*void EthernetSocket::setReceiveDataHandler(ISocketListener *iSockListener) {
+    iSocketListener = iSockListener;
+}*/
+
+
+
+
+

@@ -9,6 +9,7 @@
 
 namespace Network {
 
+#pragma pack(push, 1)
     class EthernetFrame {
     public:
 
@@ -29,7 +30,10 @@ namespace Network {
         u_int16_t etherType;
     };
 
+#pragma pack(pop)
+
     std::ostream& operator<< (std::ostream& strm, const EthernetFrame& ef);
+
 
 }
 
