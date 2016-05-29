@@ -10,8 +10,8 @@ using namespace std;
 using namespace Network;
 
 EthernetFrame::EthernetFrame()
-    : etherType (ETH_P_ALL)
 {
+    setEtherType(ETH_P_ALL);
 }
 
 EthernetFrame::EthernetFrame(const u_int8_t *src) {
