@@ -94,7 +94,7 @@ void EthernetDiscovery::getAllDevices() {
     ethernetSocket.send(ef, {MessageType::HELLO});
 
     // Receive the messages with destination Mac equivalent to ours
-    ethernetSocket.setReceiveTimeout(2);
+    ethernetSocket.setReceiveTimeout(500);
     ethernetSocket.receive(this, &ethernetSocket.getInterfaceMac());
     ethernetSocket.setReceiveTimeout(0);
 

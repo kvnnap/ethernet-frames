@@ -140,9 +140,9 @@ std::vector<u_int8_t> &EthernetSocket::getReceiveBuffer() {
     return receiveBuffer;
 }
 
-void EthernetSocket::setReceiveTimeout(uint8_t timeout) {
+void EthernetSocket::setReceiveTimeout(uint16_t timeout) {
     // set timeout
-    struct timeval tv { timeout, 0 };
+    struct timeval tv { timeout / 1000 , (timeout % 1000) * 1000 };
     setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, (char *)&tv, sizeof(tv));
 }
 

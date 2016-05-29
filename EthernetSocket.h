@@ -27,7 +27,7 @@ namespace Network {
         ~EthernetSocket();
 
         std::vector<u_int8_t>& getReceiveBuffer();
-        void setReceiveTimeout(uint8_t timeout);
+        void setReceiveTimeout(uint16_t timeout);
         const MacAddress& getInterfaceMac() const;
         //void setReceiveDataHandler(ISocketListener * iSockListener);
 
