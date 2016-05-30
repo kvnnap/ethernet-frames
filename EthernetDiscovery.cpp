@@ -126,7 +126,7 @@ bool EthernetDiscovery::dataArrival(Network::EthernetFrame &ef, uint8_t *data, s
 
 
 EthernetDiscovery::EthernetDiscovery(EthernetSocket &ethernetSocket)
-        : ethernetSocket ( ethernetSocket )
+        : ethernetSocket ( ethernetSocket ), lastMessage (EMPTY), testReceived ( false )
 { }
 
 // Algorithm I

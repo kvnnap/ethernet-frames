@@ -48,10 +48,10 @@ namespace  Network {
 
         std::vector<MacAddress> slaveMacs;
 
+        std::unique_ptr<Mathematics::Matrix<uint8_t>> connectivityMatrix;
+
         MessageType lastMessage;
         bool testReceived;
-
-        std::unique_ptr<Mathematics::Matrix<uint8_t>> connectivityMatrix;
 
     };
 
