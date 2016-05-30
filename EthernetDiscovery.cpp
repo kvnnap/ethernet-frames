@@ -57,6 +57,9 @@ bool EthernetDiscovery::dataArrival(Network::EthernetFrame &ef, uint8_t *data, s
                 replyEf.destinationMac = ef.sourceMac;
                 replyEf.sourceMac = ethernetSocket.getInterfaceMac();
                 ethernetSocket.send(replyEf, {MessageType::READY});
+
+                // Reset test every time we Begin
+                testReceived = false;
             }
         }
             break;
@@ -110,7 +113,6 @@ bool EthernetDiscovery::dataArrival(Network::EthernetFrame &ef, uint8_t *data, s
                 replyEf.destinationMac.copyFrom(data + 2); // Master MAC
                 replyEf.sourceMac = ethernetSocket.getInterfaceMac();
                 ethernetSocket.send(replyEf, {testReceived ? MessageType::YES : MessageType::NO});
-                testReceived = false;
             }
         }
             break;
