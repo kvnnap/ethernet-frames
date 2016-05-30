@@ -210,7 +210,7 @@ void EthernetDiscovery::partitionBottomLayer() {
             ethernetSocket.receive(this, &ethernetSocket.getInterfaceMac(), &slaveMacJ);
 
             // Yes means of same switch, No means not on different switches
-            (*connectivityMatrix)(i, j) = static_cast<uint8_t >(lastMessage == YES ? 1 : 0);
+            (*connectivityMatrix)(i, j) = static_cast<uint8_t >(lastMessage == YES ? '1' : '0');
         }
     }
 }
