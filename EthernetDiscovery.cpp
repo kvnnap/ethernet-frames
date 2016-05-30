@@ -34,52 +34,62 @@ bool EthernetDiscovery::dataArrival(Network::EthernetFrame &ef, uint8_t *data, s
             break;
 
         // Slave Message - Broadcasts from First Mac (UA1) and teaches
-        // Second Mac (UA2) to the closest swtich (switch attached to us)
+        // Second Mac (UA2) to the closest switch (switch attached to us)
         // Parameters are UA1 and UA2
         case MessageType::BEGIN:
         {
-            // 2) Send an empty frame with source in param (UA1)
-            // And destination is broadcast
-            EthernetFrame replyEf;
-            replyEf.destinationMac = MacAddress::BroadcastMac;
-            replyEf.sourceMac.copyFrom(data + 2); // UA1
-            ethernetSocket.send(replyEf, {MessageType::EMPTY});
+            // Act only if this packet was meant for this slave - switch might still be learning
+            if (ef.destinationMac == ethernetSocket.getInterfaceMac()) {
 
-            // 3) Let ONLY the closest switch learn about UA2
-            replyEf.destinationMac = replyEf.sourceMac; // UA1
-            replyEf.sourceMac.copyFrom(data + 8); // UA2
-            ethernetSocket.send(replyEf, {MessageType::EMPTY});
+                // 2) Send an empty frame with source in param (UA1)
+                // And destination is broadcast
+                EthernetFrame replyEf;
+                replyEf.destinationMac = MacAddress::BroadcastMac;
+                replyEf.sourceMac.copyFrom(data + 2); // UA1
+                ethernetSocket.send(replyEf, {MessageType::EMPTY});
 
-            // 4) Send Ready to Master
-            replyEf.destinationMac = ef.sourceMac;
-            replyEf.sourceMac = ethernetSocket.getInterfaceMac();
-            ethernetSocket.send(replyEf, {MessageType::READY});
+                // 3) Let ONLY the closest switch learn about UA2
+                replyEf.destinationMac = replyEf.sourceMac; // UA1
+                replyEf.sourceMac.copyFrom(data + 8); // UA2
+                ethernetSocket.send(replyEf, {MessageType::EMPTY});
+
+                // 4) Send Ready to Master
+                replyEf.destinationMac = ef.sourceMac;
+                replyEf.sourceMac = ethernetSocket.getInterfaceMac();
+                ethernetSocket.send(replyEf, {MessageType::READY});
+            }
         }
             break;
 
         // Master Message
         case MessageType::READY:
         {
-            return false;
+            // Act only if this packet was meant for this Master
+            if (ef.destinationMac == ethernetSocket.getInterfaceMac()) {
+                return false;
+            }
         }
             break;
 
         // Slave Message - First Mac to send request to
         case MessageType::START:
         {
-            // 11) Send TEST to UA2
-            EthernetFrame replyEf;
-            replyEf.destinationMac.copyFrom(data + 8); // UA2
-            replyEf.sourceMac = ethernetSocket.getInterfaceMac();
-            ethernetSocket.send(replyEf, {MessageType::TEST});
+            // Act only if this packet was meant for this Master
+            if (ef.destinationMac == ethernetSocket.getInterfaceMac()) {
+                // 11) Send TEST to UA2
+                EthernetFrame replyEf;
+                replyEf.destinationMac.copyFrom(data + 8); // UA2
+                replyEf.sourceMac = ethernetSocket.getInterfaceMac();
+                ethernetSocket.send(replyEf, {MessageType::TEST});
 
-            // 12) Send Request
-            replyEf.destinationMac.copyFrom(data + 2); // slaveMacJ
-            DataBuffer buff (8);
-            buff[0] = REQUEST;
-            buff[1] = sizeof(MacAddress);
-            ef.sourceMac.copyTo(buff.data() + 2);
-            ethernetSocket.send(replyEf, buff);
+                // 12) Send Request
+                replyEf.destinationMac.copyFrom(data + 2); // slaveMacJ
+                DataBuffer buff(8);
+                buff[0] = REQUEST;
+                buff[1] = sizeof(MacAddress);
+                ef.sourceMac.copyTo(buff.data() + 2);
+                ethernetSocket.send(replyEf, buff);
+            }
         }
             break;
 
@@ -93,26 +103,33 @@ bool EthernetDiscovery::dataArrival(Network::EthernetFrame &ef, uint8_t *data, s
         // Slave Message
         case MessageType::REQUEST:
         {
-            // 13) Respond with yes or no
-            EthernetFrame replyEf;
-            replyEf.destinationMac.copyFrom(data + 2); // Master MAC
-            replyEf.sourceMac = ethernetSocket.getInterfaceMac();
-            ethernetSocket.send(replyEf, {testReceived ? MessageType::YES : MessageType::NO});
-            testReceived = false;
+            // Act only if this packet was meant for this Master
+            if (ef.destinationMac == ethernetSocket.getInterfaceMac()) {
+                // 13) Respond with yes or no
+                EthernetFrame replyEf;
+                replyEf.destinationMac.copyFrom(data + 2); // Master MAC
+                replyEf.sourceMac = ethernetSocket.getInterfaceMac();
+                ethernetSocket.send(replyEf, {testReceived ? MessageType::YES : MessageType::NO});
+                testReceived = false;
+            }
         }
             break;
 
         // Host Message
         case MessageType::YES:
         {
-            return false;
+            if (ef.destinationMac == ethernetSocket.getInterfaceMac()) {
+                return false;
+            }
         }
             break;
 
         // Host Message
         case MessageType::NO:
         {
-            return false;
+            if (ef.destinationMac == ethernetSocket.getInterfaceMac()) {
+                return false;
+            }
         }
             break;
 
