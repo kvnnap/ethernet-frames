@@ -54,7 +54,7 @@ template <class T>
 Matrix<T> Matrix<T>::getIdentity() const
 {
     Matrix tempMatrix (rows_, rows_);
-    for(int i = 0; i < rows_; i++)
+    for(size_t i = 0; i < rows_; i++)
     {
         ((T (*) [tempMatrix.columns_])tempMatrix.data_)[i][i] = 1;
     }
@@ -150,11 +150,11 @@ Matrix<T> Matrix<T>::operator *(const Matrix& matrix) const
     {   //multiplication is defined and valid
         Matrix tempMatrix (rows_, matrix.columns_);
         //T (*cell)[tempMatrix.columns_] = (T (*) [tempMatrix.columns_]) tempMatrix.data_;
-        for(int i = 0; i < tempMatrix.rows_; i++)
+        for(size_t i = 0; i < tempMatrix.rows_; i++)
         {
-            for(int j = 0; j < tempMatrix.columns_; j++)
+            for(size_t j = 0; j < tempMatrix.columns_; j++)
             {
-                for(int k = 0; k < columns_; k++)
+                for(size_t k = 0; k < columns_; k++)
                 {
                     ((T (*) [tempMatrix.columns_])tempMatrix.data_)[i][j] += ((T (*) [columns_])data_)[i][k] * ((T (*) [matrix.columns_])matrix.data_)[k][j];
                 }
@@ -181,9 +181,9 @@ Vector Matrix<T>::operator *(const Vector& vector) const
         ((T (*) [matrix.columns_])matrix.data_)[2][0] = vector.xyz[2];
         if(columns_ == 4) { ((T (*) [matrix.columns_])matrix.data_)[3][0] = 1; }
         //T (*cell)[tempMatrix.columns_] = (T (*) [tempMatrix.columns_]) tempMatrix.data_;
-        for(int i = 0; i < tempMatrix.rows_; i++)
+        for(size_t i = 0; i < tempMatrix.rows_; i++)
         {
-            for(int k = 0; k < columns_; k++)
+            for(size_t k = 0; k < columns_; k++)
             {
                 ((T (*) [tempMatrix.columns_])tempMatrix.data_)[i][0] += ((T (*) [columns_])data_)[i][k] * ((T (*) [matrix.columns_])matrix.data_)[k][0];
             }
@@ -219,9 +219,9 @@ Matrix<T> Matrix<T>::operator * (T scalar) const
 {
     Matrix tempMatrix (*this);
     //T (*cell)[tempMatrix.columns_] = (T (*) [tempMatrix.columns_]) tempMatrix.data_;
-    for(int i = 0; i < tempMatrix.rows_; i++)
+    for(size_t i = 0; i < tempMatrix.rows_; i++)
     {
-        for(int j = 0; j < tempMatrix.columns_; j++)
+        for(size_t j = 0; j < tempMatrix.columns_; j++)
         {
             ((T (*) [tempMatrix.columns_])tempMatrix.data_)[i][j] *= scalar;   
         }
@@ -236,9 +236,9 @@ Matrix<T> Matrix<T>::operator +(const Matrix& matrix) const
     {
         Matrix tempMatrix (rows_, columns_);
         
-        for(int i = 0; i < tempMatrix.rows_; i++)
+        for(size_t i = 0; i < tempMatrix.rows_; i++)
         {
-            for(int j = 0; j < tempMatrix.columns_; j++)
+            for(size_t j = 0; j < tempMatrix.columns_; j++)
             {
                 ((T (*) [tempMatrix.columns_])tempMatrix.data_)[i][j] = ((T (*) [columns_])data_)[i][j] + ((T (*) [matrix.columns_])matrix.data_)[i][j];
                 //or use tempMatrix(i,j) = (*this)(i,j) + matrix(i,j);
@@ -259,9 +259,9 @@ Matrix<T> Matrix<T>::operator -(const Matrix& matrix) const
     {
         Matrix tempMatrix (rows_, columns_);
         
-        for(int i = 0; i < tempMatrix.rows_; i++)
+        for(size_t i = 0; i < tempMatrix.rows_; i++)
         {
-            for(int j = 0; j < tempMatrix.columns_; j++)
+            for(size_t j = 0; j < tempMatrix.columns_; j++)
             {
                 ((T (*) [tempMatrix.columns_])tempMatrix.data_)[i][j] = ((T (*) [columns_])data_)[i][j] - ((T (*) [matrix.columns_])matrix.data_)[i][j];
                 //or use tempMatrix(i,j) = (*this)(i,j) + matrix(i,j);
@@ -283,12 +283,12 @@ const Matrix<T>& Matrix<T>::operator *=(const Matrix& matrix)
     {   //multiplication is defined and valid
         Matrix tempMatrix (*this);
         //T (*cell)[tempMatrix.columns_] = (T (*) [tempMatrix.columns_]) tempMatrix.data_;
-        for(int i = 0; i < tempMatrix.rows_; i++)
+        for(size_t i = 0; i < tempMatrix.rows_; i++)
         {
-            for(int j = 0; j < tempMatrix.columns_; j++)
+            for(size_t j = 0; j < tempMatrix.columns_; j++)
             {
                 ((T (*) [columns_])data_)[i][j] = 0;
-                for(int k = 0; k < columns_; k++)
+                for(size_t k = 0; k < columns_; k++)
                 {
                     ((T (*) [columns_])data_)[i][j]  += ((T (*) [tempMatrix.columns_])tempMatrix.data_)[i][k] * ((T (*) [matrix.columns_])matrix.data_)[k][j];
                 }
@@ -307,9 +307,9 @@ const Matrix<T>& Matrix<T>::operator +=(const Matrix& matrix)
 {
     if(rows_ == matrix.rows_ && columns_ == matrix.columns_)
     {   
-        for(int i = 0; i < rows_; i++)
+        for(size_t i = 0; i < rows_; i++)
         {
-            for(int j = 0; j < columns_; j++)
+            for(size_t j = 0; j < columns_; j++)
             {
                 ((T (*) [columns_])data_)[i][j] += ((T (*) [matrix.columns_])matrix.data_)[i][j];
                 //or use (*this)(i,j) += matrix(i,j);
@@ -327,9 +327,9 @@ const Matrix<T>& Matrix<T>::operator -=(const Matrix& matrix)
 {
     if(rows_ == matrix.rows_ && columns_ == matrix.columns_)
     {   
-        for(int i = 0; i < rows_; i++)
+        for(size_t i = 0; i < rows_; i++)
         {
-            for(int j = 0; j < columns_; j++)
+            for(size_t j = 0; j < columns_; j++)
             {
                 ((T (*) [columns_])data_)[i][j] -= ((T (*) [matrix.columns_])matrix.data_)[i][j];
                 //or use (*this)(i,j) += matrix(i,j);
@@ -363,9 +363,9 @@ Matrix<T> Mathematics::operator* (T scalar, const Matrix<T>& matrix)
 {
     Matrix<T> tempMatrix (matrix);
     //T (*cell)[tempMatrix.columns_] = (T (*) [tempMatrix.columns_]) tempMatrix.data_;
-    for(int i = 0; i < tempMatrix.rows_; i++)
+    for(size_t i = 0; i < tempMatrix.rows_; i++)
     {
-        for(int j = 0; j < tempMatrix.columns_; j++)
+        for(size_t j = 0; j < tempMatrix.columns_; j++)
         {
             ((T (*) [tempMatrix.columns_])tempMatrix.data_)[i][j] *= scalar;   
         }
@@ -376,10 +376,10 @@ Matrix<T> Mathematics::operator* (T scalar, const Matrix<T>& matrix)
 template<class T>
 std::ostream& Mathematics::operator<<(std::ostream& strm, const Matrix<T>& matrix) {
     size_t rows = matrix.getRows(), columns = matrix.getColumns();
-    for(int i = 0; i < rows; i++)
+    for(size_t i = 0; i < rows; i++)
     {
         strm << "(";
-        for(int j = 0; j < columns; j++)
+        for(size_t j = 0; j < columns; j++)
         {
             strm << matrix(i, j);
             if (j + 1 != columns) {
