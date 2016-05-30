@@ -58,6 +58,22 @@ EthernetSocket::EthernetSocket(const string &p_interfaceName)
         interfaceMac.setMacArray(*(uint8_t(*)[6])&if_mac.ifr_hwaddr.sa_data);
     }
 
+    // Set interface to promiscuous mode - Without this, only broadcasts and packets directed to us are received ( and sent?)
+    {
+        struct ifreq if_opts {};
+        p_interfaceName.copy(if_opts.ifr_name, p_interfaceName.length());
+        if (ioctl(sockfd, SIOCGIFFLAGS, &if_opts) < 0) {
+            close(sockfd);
+            throw invalid_argument(string("SIOCGIFFLAGS") + strerror(errno));
+        }
+        // Add promiscuous mode to flags
+        if_opts.ifr_flags |= IFF_PROMISC;
+        if (ioctl(sockfd, SIOCSIFFLAGS, &if_opts) < 0) {
+            close(sockfd);
+            throw invalid_argument(string("SIOCSIFFLAGS") + strerror(errno));
+        }
+    }
+
     // Bind to device (For Reading)
     if (setsockopt(sockfd, SOL_SOCKET, SO_BINDTODEVICE, p_interfaceName.c_str(), IFNAMSIZ - 1) == -1)	{
         close(sockfd);
