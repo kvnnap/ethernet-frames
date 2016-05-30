@@ -5,9 +5,11 @@
 #ifndef NETWORK_DISCOVERY_ETHERNETDISCOVERY_H
 #define NETWORK_DISCOVERY_ETHERNETDISCOVERY_H
 
-#include "EthernetSocket.h"
+#include <memory>
 
+#include "EthernetSocket.h"
 #include "ISocketListener.h"
+#include "Matrix.h"
 
 namespace  Network {
 
@@ -32,13 +34,24 @@ namespace  Network {
         EthernetDiscovery(EthernetSocket& ethernetSocket);
 
         bool dataArrival(EthernetFrame& ef, uint8_t * data, size_t len) override;
-        void getAllDevices();
+        void master();
         void slave();
+
+        // Algorithm 1
+        void getAllDevices();
+        // Algorithm 2
+        void partitionBottomLayer();
+
 
     private:
         EthernetSocket & ethernetSocket;
 
         std::vector<MacAddress> slaveMacs;
+
+        MessageType lastMessage;
+        bool testReceived;
+
+        std::unique_ptr<Mathematics::Matrix<uint8_t>> connectivityMatrix;
 
     };
 

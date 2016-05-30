@@ -15,11 +15,11 @@ EthernetFrame::EthernetFrame()
     setEtherType(CUSTOM_ETH_TYPE);
 }
 
-EthernetFrame::EthernetFrame(const u_int8_t *src) {
+EthernetFrame::EthernetFrame(const uint8_t *src) {
     copyFrom(src);
 }
 
-void EthernetFrame::copyTo(u_int8_t *dest) const {
+void EthernetFrame::copyTo(uint8_t *dest) const {
     destinationMac.copyTo(dest);
     dest += ETH_ALEN;
 
@@ -29,7 +29,7 @@ void EthernetFrame::copyTo(u_int8_t *dest) const {
     *(u_int16_t*) dest  = etherType;
 }
 
-void EthernetFrame::copyFrom(const u_int8_t *src) {
+void EthernetFrame::copyFrom(const uint8_t *src) {
     destinationMac.copyFrom(src);
     src += ETH_ALEN;
 

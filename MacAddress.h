@@ -12,11 +12,17 @@
 
 namespace Network {
 
-    typedef std::array<u_int8_t, ETH_ALEN> Mac;
+    // Preferred way to typedef
+    using Mac = std::array<uint8_t, ETH_ALEN>;
 
 #pragma pack(push, 1)
     class MacAddress {
     public:
+
+        static const MacAddress BroadcastMac;
+        static const MacAddress& GetBroadcastMac();
+        static const MacAddress UA1;
+        static const MacAddress UA2;
 
         MacAddress();
         MacAddress(const Mac& p_mac);
@@ -26,14 +32,13 @@ namespace Network {
         bool isUnset() const;
 
         const Mac& getMacArray() const;
-        void copyTo(u_int8_t * dest) const;
-        void copyFrom(const u_int8_t * src);
+        void copyTo(uint8_t * dest) const;
+        void copyFrom(const uint8_t * src);
 
         void setMacArray(const Mac& p_mac);
-        void setMacArray(const u_int8_t arr[ETH_ALEN]);
-        void setArrayElement(size_t index, u_int8_t value);
+        void setMacArray(const uint8_t arr[ETH_ALEN]);
+        void setArrayElement(size_t index, uint8_t value);
 
-        static MacAddress GetBroadcastMac();
 
         //friend std::ostream& operator<< (std::ostream& strm, const MacAddress& mac);
     private:

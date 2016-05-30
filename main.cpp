@@ -98,7 +98,7 @@ int main(int argc, char *argv[])
             es.send(ef, vector<u_int8_t>(1, 65)); */
             //send_frame(interfaceName.c_str(), destMac, "Hello");
 
-            ed.getAllDevices();
+            ed.master();
         } else {
             cout << "Starting up as Slave" << endl;
             ed.slave();

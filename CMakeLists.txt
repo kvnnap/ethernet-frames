@@ -12,5 +12,7 @@ set(SOURCE_FILES
         MacAddress.cpp MacAddress.h
         EthernetFrame.cpp EthernetFrame.h
         ISocketListener.cpp ISocketListener.h
-        EthernetDiscovery.cpp EthernetDiscovery.h)
+        EthernetDiscovery.cpp EthernetDiscovery.h
+        Vector3.h Vector3.cpp
+        Matrix.h Matrix.cpp)
 add_executable(network_discovery ${SOURCE_FILES})

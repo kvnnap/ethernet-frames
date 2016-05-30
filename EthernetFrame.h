@@ -14,10 +14,10 @@ namespace Network {
     public:
 
         EthernetFrame();
-        EthernetFrame(const u_int8_t * src);
+        EthernetFrame(const uint8_t * src);
 
-        void copyTo(u_int8_t * dest) const;
-        void copyFrom(const u_int8_t * src);
+        void copyTo(uint8_t * dest) const;
+        void copyFrom(const uint8_t * src);
         void setEtherType(u_int16_t p_ethType);
         u_int16_t getEtherType() const;
 

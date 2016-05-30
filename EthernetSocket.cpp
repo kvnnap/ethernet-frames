@@ -55,7 +55,7 @@ EthernetSocket::EthernetSocket(const string &p_interfaceName)
             close(sockfd);
             throw invalid_argument(string("SIOCGIFHWADDR") + strerror(errno));
         }
-        interfaceMac.setMacArray(*(u_int8_t(*)[6])&if_mac.ifr_hwaddr.sa_data);
+        interfaceMac.setMacArray(*(uint8_t(*)[6])&if_mac.ifr_hwaddr.sa_data);
     }
 
     // Bind to device (For Reading)
@@ -69,9 +69,9 @@ EthernetSocket::~EthernetSocket() {
     close(sockfd);
 }
 
-void EthernetSocket::send(EthernetFrame &ef, const std::vector<u_int8_t> &data) {
+void EthernetSocket::send(EthernetFrame &ef, const DataBuffer &data) {
 
-    u_int8_t * buff = sendBuffer.data();
+    uint8_t * buff = sendBuffer.data();
     size_t size {};
 
     if (ef.sourceMac.isUnset()) {
@@ -130,13 +130,13 @@ ssize_t EthernetSocket::receive(ISocketListener * iSocketListener, const MacAddr
 
     // exit due to timeout
     if (errno == EAGAIN || errno == EWOULDBLOCK) {
-        return numBytes;
+        return -numBytes;
     }
 
     throw runtime_error(string("read error: ") + strerror(errno));
 }
 
-std::vector<u_int8_t> &EthernetSocket::getReceiveBuffer() {
+DataBuffer &EthernetSocket::getReceiveBuffer() {
     return receiveBuffer;
 }
 

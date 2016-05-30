@@ -20,25 +20,27 @@
 
 namespace Network {
 
+    using DataBuffer = std::vector<uint8_t>;
+
     class EthernetSocket {
     public:
         // Initialises an Ethernet Socket on the interface provided
         EthernetSocket(const std::string& p_interfaceName);
         ~EthernetSocket();
 
-        std::vector<u_int8_t>& getReceiveBuffer();
+        DataBuffer& getReceiveBuffer();
         void setReceiveTimeout(uint16_t timeout);
         const MacAddress& getInterfaceMac() const;
         //void setReceiveDataHandler(ISocketListener * iSockListener);
 
-        void send(EthernetFrame& ef, const std::vector<u_int8_t>& data);
+        void send(EthernetFrame& ef, const DataBuffer& data);
         ssize_t receive(ISocketListener * iSocketListener, const MacAddress * destination = nullptr, const MacAddress * source = nullptr);
     private:
         std::string interfaceName;
         int sockfd;
         struct sockaddr_ll socket_address; // Used for index
         MacAddress interfaceMac;
-        std::vector<u_int8_t> sendBuffer, receiveBuffer;
+        DataBuffer sendBuffer, receiveBuffer;
 
         //
         ISocketListener * iSocketListener;

@@ -7,6 +7,10 @@
 using namespace std;
 using namespace Network;
 
+const MacAddress MacAddress::BroadcastMac ({0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF});
+const MacAddress MacAddress::UA1 ({0x00, 0x00, 0x5E, 0x00, 0x52, 0x02});
+const MacAddress MacAddress::UA2 ({0x00, 0x00, 0x5E, 0x00, 0x52, 0x03});
+
 MacAddress::MacAddress()
     : mac ()
 { }
@@ -15,15 +19,17 @@ MacAddress::MacAddress(const Mac &p_mac)
     : mac (p_mac)
 { }
 
+
+
 const Mac& MacAddress::getMacArray() const {
     return mac;
 };
 
-void MacAddress::copyTo(u_int8_t *dest) const {
+void MacAddress::copyTo(uint8_t *dest) const {
     copy(mac.data(), mac.data() + mac.size(), dest);
 }
 
-void MacAddress::copyFrom(const u_int8_t *src) {
+void MacAddress::copyFrom(const uint8_t *src) {
     copy(src, src + mac.size(), mac.data());
 }
 
@@ -31,11 +37,11 @@ void MacAddress::setMacArray(const Mac &p_mac) {
     mac = p_mac;
 }
 
-void MacAddress::setMacArray(const u_int8_t arr[ETH_ALEN]) {
+void MacAddress::setMacArray(const uint8_t arr[ETH_ALEN]) {
     copyFrom(arr);
 }
 
-void MacAddress::setArrayElement(size_t index, u_int8_t value) {
+void MacAddress::setArrayElement(size_t index, uint8_t value) {
     mac.at(index) = value;
 }
 
@@ -52,9 +58,8 @@ bool MacAddress::isUnset() const {
     return *this == MacAddress(mac);
 }
 
-MacAddress MacAddress::GetBroadcastMac() {
-    Mac destMac = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
-    return MacAddress(destMac);
+const MacAddress& MacAddress::GetBroadcastMac() {
+    return BroadcastMac;
 }
 
 bool MacAddress::operator!=(const MacAddress &other) const {
