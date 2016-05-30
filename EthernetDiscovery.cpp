@@ -163,16 +163,16 @@ void EthernetDiscovery::partitionBottomLayer() {
 
     for(size_t i = 0; i < slaveMacs.size(); ++i) {
 
-        const MacAddress& slaveMac = slaveMacs[i];
+        const MacAddress& slaveMacI = slaveMacs[i];
 
         // 1) Send Begin UA1
-        ef.destinationMac = slaveMac;
+        ef.destinationMac = slaveMacI;
         ethernetSocket.send(ef, buffBegin);
 
         // 2-3) executed by slave
         // Wait for READY message from Slave
         //ready = false;
-        ethernetSocket.receive(this, &ethernetSocket.getInterfaceMac(), &slaveMac);
+        ethernetSocket.receive(this, &ethernetSocket.getInterfaceMac(), &slaveMacI);
 
         if (lastMessage != READY) {
             throw runtime_error("Algorithm 2 Step 4 (out of sync) - Last message is not READY");
@@ -192,12 +192,12 @@ void EthernetDiscovery::partitionBottomLayer() {
             ethernetSocket.send(ef, buffBegin);
 
             // 7-8) done by slave
-            ethernetSocket.receive(this, &ethernetSocket.getInterfaceMac(), &slaveMac);
+            ethernetSocket.receive(this, &ethernetSocket.getInterfaceMac(), &slaveMacJ);
 
-            // 10) Master sends Start with slaveMacJ to slaveMac
+            // 10) Master sends Start with slaveMacJ to slaveMacI
 
             // Build packet
-            ef.destinationMac = slaveMac;
+            ef.destinationMac = slaveMacI;
 
             // Mac to send request to
             slaveMacJ.copyTo(buffStart.data() + 2);
