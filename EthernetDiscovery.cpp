@@ -183,7 +183,7 @@ void EthernetDiscovery::partitionBottomLayer() {
             const MacAddress& slaveMacJ = slaveMacs[j];
 
             if (i == j) {
-                (*connectivityMatrix)(i, j) = 1;
+                (*connectivityMatrix)(i, j) = '1';
                 continue;
             }
 
