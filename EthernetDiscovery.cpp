@@ -379,7 +379,7 @@ void EthernetDiscovery::master() {
         cout << "Set " << i << ": ";
         for (const size_t& node : connectivitySet[i]) {
             cout << node;
-            if ((&node + 1) != &*connectivitySet[i].end()) {
+            if (&node != &*--connectivitySet[i].end()) {
                 cout << ", ";
             }
         }
