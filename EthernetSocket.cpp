@@ -152,7 +152,7 @@ ssize_t EthernetSocket::receive(ISocketListener * iSocketListener, const MacAddr
     throw runtime_error(string("read error: ") + strerror(errno));
 }
 
-DataBuffer &EthernetSocket::getReceiveBuffer() {
+const DataBuffer &EthernetSocket::getReceiveBuffer() const {
     return receiveBuffer;
 }
 

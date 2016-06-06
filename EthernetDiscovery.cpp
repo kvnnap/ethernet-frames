@@ -3,6 +3,7 @@
 //
 
 #include <iostream>
+#include <sstream>
 #include "EthernetDiscovery.h"
 
 using namespace Network;
@@ -106,7 +107,7 @@ bool EthernetDiscovery::dataArrival(Network::EthernetFrame &ef, uint8_t *data, s
         // Slave Message
         case MessageType::REQUEST:
         {
-            // Act only if this packet was meant for this Master
+            // Act only if this packet was meant for this Slave
             if (ef.destinationMac == ethernetSocket.getInterfaceMac()) {
                 // 13) Respond with yes or no
                 EthernetFrame replyEf;
@@ -132,6 +133,42 @@ bool EthernetDiscovery::dataArrival(Network::EthernetFrame &ef, uint8_t *data, s
             if (ef.destinationMac == ethernetSocket.getInterfaceMac()) {
                 return false;
             }
+        }
+            break;
+
+        // Slave Message
+        case MessageType::SEND_PACKET:
+        {
+            // Act only if this packet was meant for this Slave
+            // Param 1 = Source (6 bytes) 2 - 7
+            // Param 2 = Destination (6 bytes) 8 - 13
+            // Param 3 = Variable Size (another Message)
+            if (ef.destinationMac == ethernetSocket.getInterfaceMac()) {
+                EthernetFrame replyEf;
+                replyEf.destinationMac.copyFrom(data + 8);
+                replyEf.sourceMac.copyFrom(data + 2);
+                DataBuffer buff (data[1] - (uint8_t)12);
+                data += 14;
+                copy(data, data + buff.size(), buff.data());
+                ethernetSocket.send(replyEf, buff);
+
+                // Send Ready to Master
+                replyEf.destinationMac = ef.sourceMac;
+                replyEf.sourceMac = ethernetSocket.getInterfaceMac();
+                ethernetSocket.send(replyEf, {MessageType::READY});
+            }
+        }
+            break;
+
+            // Slave Message
+        case MessageType::PROBE:
+        {
+            // The destination will be different this time
+            // Param 1 = Mac to reply to (6 bytes) 2 - 7
+            EthernetFrame replyEf;
+            replyEf.destinationMac.copyFrom(data + 2);
+            replyEf.sourceMac = ethernetSocket.getInterfaceMac();
+            ethernetSocket.send(replyEf, {MessageType::YES});
         }
             break;
 
@@ -224,14 +261,104 @@ void EthernetDiscovery::partitionBottomLayer() {
             // Send
             ethernetSocket.send(ef, buffStart);
 
-
             // 14) - Expecting message from SlaveJ
             ethernetSocket.receive(this, &ethernetSocket.getInterfaceMac(), &slaveMacJ);
 
-            // Yes means of same switch, No means not on different switches
+            // Yes means on same switch, No means on different switches
             (*connectivityMatrix)(i, j) = static_cast<uint8_t >(lastMessage == YES ? '1' : '0');
         }
     }
+
+    // Build Connectivity Set (Keeping Matrix for verification only)
+    for (size_t i = 0; i < connectivityMatrix->getRows(); ++i) {
+        connectivitySet.push_back({i});
+    }
+
+    // Merge sets as necessary
+    for (size_t i = 0; i < connectivitySet.size(); ++i) {
+        for (size_t j = i + 1; j < connectivitySet.size(); ++j) {
+            if ((*connectivityMatrix)(*connectivitySet[i].begin(), *connectivitySet[j].begin()) == '1') {
+                // merge into i
+                connectivitySet[i].insert(connectivitySet[j].begin(), connectivitySet[j].end());
+                connectivitySet.erase(connectivitySet.begin() + j);
+                --j;
+            }
+        }
+    }
+
+}
+
+bool EthernetDiscovery::testPermutation(const MacAddress &gateway, const MacAddress &i, const MacAddress &j, const MacAddress &k) {
+    {
+        EthernetFrame ef;
+        DataBuffer buff(22);
+
+        ef.sourceMac = ethernetSocket.getInterfaceMac();
+        buff[0] = SEND_PACKET;
+        buff[1] = 13;
+        buff[14] = EMPTY;
+
+        // Let SDi send the packet UA1 --> SDj
+        ef.destinationMac = i;
+        MacAddress::UA1.copyTo(buff.data() + 2); // UA1
+        j.copyTo(buff.data() + 8); // SDj
+        ethernetSocket.send(ef, buff);
+        ethernetSocket.receive(this, &ethernetSocket.getInterfaceMac(), &i);
+
+        // Let SDk send the packet UA1 --> GW
+        ef.destinationMac = k;
+        MacAddress::UA1.copyTo(buff.data() + 2); // UA1
+        gateway.copyTo(buff.data() + 8); // Gateway
+        ethernetSocket.send(ef, buff);
+        ethernetSocket.receive(this, &ethernetSocket.getInterfaceMac(), &k);
+
+        // Let SDj send the packet SDj --> UA1
+        ef.destinationMac = j;
+        j.copyTo(buff.data() + 2); // SDj
+        MacAddress::UA1.copyTo(buff.data() + 8); // UA1
+        buff[1] = 20;
+        buff[14] = PROBE;
+        buff[15] = 6;
+        ethernetSocket.getInterfaceMac().copyTo(buff.data() + 16);
+        ethernetSocket.send(ef, buff);
+    }
+
+    // Wait for probe directed to us coming from either SDi or SDk and wait for Ready
+    MacAddress SDik;
+    {
+        uint8_t a = 1, b = 1;
+        for (uint8_t n = 0; n < 2; ++n) {
+            ethernetSocket.receive(this, &ethernetSocket.getInterfaceMac());
+            if (lastMessage == READY) {
+                --a;
+                MacAddress verify;
+                verify.copyFrom(ethernetSocket.getReceiveBuffer().data() + ETH_ALEN);
+                if (verify != j) {
+                    ostringstream oss;
+                    oss << "Algorithm 3 - Received Ready from unknown source: " << verify << endl;
+                    throw runtime_error(oss.str());
+                }
+            } else if (lastMessage == YES) {
+                --b;
+                // Check which slave sent us this message
+                SDik.copyFrom(ethernetSocket.getReceiveBuffer().data() + ETH_ALEN);
+            }
+        }
+        if (a != 0 || b != 0) {
+            throw runtime_error("Algorithm 3 - Probe (out of sync); Both Yes and Ready not received");
+        }
+    }
+
+    if (SDik == i) {
+        return false;
+    } else if (SDik == k) {
+        return true;
+    } else {
+        ostringstream oss;
+        oss << "Algorithm 3 - Received Yes from unknown source: " << SDik << endl;
+        throw runtime_error(oss.str());
+    }
+
 }
 
 void EthernetDiscovery::master() {
@@ -248,11 +375,30 @@ void EthernetDiscovery::master() {
     partitionBottomLayer();
     cout << "Connectivity Matrix: " << endl;
     cout << *connectivityMatrix << endl;
+    for (size_t i = 0; i < connectivitySet.size(); ++i) {
+        cout << "Set " << i << ": ";
+        for (size_t node : connectivitySet[i]) {
+            cout << node << " ";
+        }
+        if (i + 1 == connectivitySet.size()) {
+            cout << endl;
+        }
+    }
+
+    // Algorithm 3 - Test
+    if (slaveMacs.size() >= 3) {
+        cout << "Test using first 3: " << endl;
+        cout << "0, 1, 2: " << testPermutation(ethernetSocket.getInterfaceMac(), slaveMacs[0], slaveMacs[1], slaveMacs[2]) << endl;
+        cout << "0, 2, 1: " << testPermutation(ethernetSocket.getInterfaceMac(), slaveMacs[0], slaveMacs[2], slaveMacs[1]) << endl;
+        cout << "1, 2, 0: " << testPermutation(ethernetSocket.getInterfaceMac(), slaveMacs[1], slaveMacs[2], slaveMacs[0]) << endl;
+    }
+
  }
 
 void EthernetDiscovery::slave() {
     ethernetSocket.receive(this);
 }
+
 
 
 

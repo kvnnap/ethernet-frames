@@ -6,6 +6,7 @@
 #define NETWORK_DISCOVERY_ETHERNETDISCOVERY_H
 
 #include <memory>
+#include <set>
 
 #include "EthernetSocket.h"
 #include "ISocketListener.h"
@@ -28,7 +29,9 @@ namespace  Network {
             TEST = 5,
             REQUEST = 6,
             YES = 7,
-            NO = 8
+            NO = 8,
+            SEND_PACKET = 9,
+            PROBE = 10
         };
 
         EthernetDiscovery(EthernetSocket& ethernetSocket);
@@ -41,6 +44,8 @@ namespace  Network {
         void getAllDevices();
         // Algorithm 2
         void partitionBottomLayer();
+        // Algorithm 3
+        bool testPermutation(const MacAddress &gateway, const MacAddress& i, const MacAddress& j, const MacAddress& k);
 
 
     private:
@@ -49,6 +54,7 @@ namespace  Network {
         std::vector<MacAddress> slaveMacs;
 
         std::unique_ptr<Mathematics::Matrix<uint8_t>> connectivityMatrix;
+        std::vector<std::set<size_t>> connectivitySet;
 
         MessageType lastMessage;
         bool testReceived;

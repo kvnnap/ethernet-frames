@@ -28,7 +28,7 @@ namespace Network {
         EthernetSocket(const std::string& p_interfaceName);
         ~EthernetSocket();
 
-        DataBuffer& getReceiveBuffer();
+        const DataBuffer& getReceiveBuffer() const;
         void setReceiveTimeout(uint16_t timeout);
         const MacAddress& getInterfaceMac() const;
         //void setReceiveDataHandler(ISocketListener * iSockListener);
