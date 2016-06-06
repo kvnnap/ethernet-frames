@@ -377,12 +377,13 @@ void EthernetDiscovery::master() {
     cout << *connectivityMatrix << endl;
     for (size_t i = 0; i < connectivitySet.size(); ++i) {
         cout << "Set " << i << ": ";
-        for (size_t node : connectivitySet[i]) {
-            cout << node << " ";
+        for (const size_t& node : connectivitySet[i]) {
+            cout << node;
+            if ((&node + 1) != &*connectivitySet[i].end()) {
+                cout << ", ";
+            }
         }
-        if (i + 1 == connectivitySet.size()) {
-            cout << endl;
-        }
+        cout << endl;
     }
 
     // Algorithm 3 - Test
