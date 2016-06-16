@@ -46,6 +46,8 @@ namespace  Network {
         void partitionBottomLayer();
         // Algorithm 3
         bool testPermutation(const MacAddress &gateway, const MacAddress& i, const MacAddress& j, const MacAddress& k);
+        // Algorithm 4
+        void discoverNetwork();
 
 
     private:

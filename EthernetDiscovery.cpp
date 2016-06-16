@@ -358,6 +358,12 @@ bool EthernetDiscovery::testPermutation(const MacAddress &gateway, const MacAddr
         oss << "Algorithm 3 - Received Yes from unknown source: " << SDik << endl;
         throw runtime_error(oss.str());
     }
+}
+
+void EthernetDiscovery::discoverNetwork() {
+
+    // 2) Pick 3 different SDs
+    MacAddress * i, * j, * k;
 
 }
 
