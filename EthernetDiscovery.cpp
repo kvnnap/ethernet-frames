@@ -7,7 +7,6 @@
 #include "EthernetDiscovery.h"
 
 using namespace Network;
-using namespace Mathematics;
 using namespace std;
 
 EthernetDiscovery::EthernetDiscovery(EthernetSocket &ethernetSocket)
