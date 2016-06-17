@@ -5,7 +5,6 @@
 #ifndef NETWORK_DISCOVERY_ETHERNETDISCOVERY_H
 #define NETWORK_DISCOVERY_ETHERNETDISCOVERY_H
 
-#include <memory>
 #include <set>
 
 #include "EthernetSocket.h"
@@ -55,7 +54,6 @@ namespace  Network {
 
         std::vector<MacAddress> slaveMacs;
 
-        std::unique_ptr<Mathematics::Matrix<uint8_t>> connectivityMatrix;
         std::vector<std::set<size_t>> connectivitySet;
 
         MessageType lastMessage;

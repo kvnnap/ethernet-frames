@@ -10,6 +10,10 @@ using namespace Network;
 using namespace Mathematics;
 using namespace std;
 
+EthernetDiscovery::EthernetDiscovery(EthernetSocket &ethernetSocket)
+        : ethernetSocket ( ethernetSocket ), lastMessage (EMPTY), testReceived ( false )
+{ }
+
 // returning false breaks the dataArrival infinite loop
 // or set a timeout interval..
 bool EthernetDiscovery::dataArrival(Network::EthernetFrame &ef, uint8_t *data, size_t len) {
@@ -180,11 +184,6 @@ bool EthernetDiscovery::dataArrival(Network::EthernetFrame &ef, uint8_t *data, s
     return true;
 }
 
-
-EthernetDiscovery::EthernetDiscovery(EthernetSocket &ethernetSocket)
-        : ethernetSocket ( ethernetSocket ), lastMessage (EMPTY), testReceived ( false )
-{ }
-
 // Algorithm I
 void EthernetDiscovery::getAllDevices() {
     slaveMacs.clear();
@@ -215,11 +214,15 @@ void EthernetDiscovery::partitionBottomLayer() {
     // Mac to test with
     MacAddress::UA2.copyTo(buffStart.data() + 8);
 
-    connectivityMatrix.reset(new Matrix<uint8_t>(slaveMacs.size(), slaveMacs.size()));
+    connectivitySet.clear();
+    // Build Connectivity Set
+    for (size_t i = 0; i < slaveMacs.size(); ++i) {
+        connectivitySet.push_back({i});
+    }
 
-    for(size_t i = 0; i < slaveMacs.size(); ++i) {
+    for(size_t i = 0; i < connectivitySet.size(); ++i) {
 
-        const MacAddress& slaveMacI = slaveMacs[i];
+        const MacAddress& slaveMacI = slaveMacs[*connectivitySet[i].begin()];
 
         // 1) Send Begin UA1
         ef.destinationMac = slaveMacI;
@@ -234,14 +237,9 @@ void EthernetDiscovery::partitionBottomLayer() {
             throw runtime_error("Algorithm 2 Step 4 (out of sync) - Last message is not READY");
         }
 
-        for(size_t j = 0; j < slaveMacs.size(); ++j) {
+        for(size_t j = i + 1; j < connectivitySet.size(); ++j) {
 
-            const MacAddress& slaveMacJ = slaveMacs[j];
-
-            if (i == j) {
-                (*connectivityMatrix)(i, j) = '1';
-                continue;
-            }
+            const MacAddress& slaveMacJ = slaveMacs[*connectivitySet[j].begin()];
 
             // 6) Send Begin
             ef.destinationMac = slaveMacJ;
@@ -265,19 +263,7 @@ void EthernetDiscovery::partitionBottomLayer() {
             ethernetSocket.receive(this, &ethernetSocket.getInterfaceMac(), &slaveMacJ);
 
             // Yes means on same switch, No means on different switches
-            (*connectivityMatrix)(i, j) = static_cast<uint8_t >(lastMessage == YES ? '1' : '0');
-        }
-    }
-
-    // Build Connectivity Set (Keeping Matrix for verification only)
-    for (size_t i = 0; i < connectivityMatrix->getRows(); ++i) {
-        connectivitySet.push_back({i});
-    }
-
-    // Merge sets as necessary
-    for (size_t i = 0; i < connectivitySet.size(); ++i) {
-        for (size_t j = i + 1; j < connectivitySet.size(); ++j) {
-            if ((*connectivityMatrix)(*connectivitySet[i].begin(), *connectivitySet[j].begin()) == '1') {
+            if (lastMessage == YES) {
                 // merge into i
                 connectivitySet[i].insert(connectivitySet[j].begin(), connectivitySet[j].end());
                 connectivitySet.erase(connectivitySet.begin() + j);
@@ -285,7 +271,6 @@ void EthernetDiscovery::partitionBottomLayer() {
             }
         }
     }
-
 }
 
 bool EthernetDiscovery::testPermutation(const MacAddress &gateway, const MacAddress &i, const MacAddress &j, const MacAddress &k) {
@@ -363,7 +348,7 @@ bool EthernetDiscovery::testPermutation(const MacAddress &gateway, const MacAddr
 void EthernetDiscovery::discoverNetwork() {
 
     // 2) Pick 3 different SDs
-    MacAddress * i, * j, * k;
+    //MacAddress * i, * j, * k;
 
 }
 
@@ -380,7 +365,7 @@ void EthernetDiscovery::master() {
     // Algorithm 2
     partitionBottomLayer();
     cout << "Connectivity Matrix: " << endl;
-    cout << *connectivityMatrix << endl;
+    //cout << *connectivityMatrix << endl;
     for (size_t i = 0; i < connectivitySet.size(); ++i) {
         cout << "Set " << i << ": ";
         for (const size_t& node : connectivitySet[i]) {
