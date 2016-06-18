@@ -20,6 +20,7 @@
 #include <stdexcept>
 #include "EthernetSocket.h"
 #include "EthernetDiscovery.h"
+#include "LinuxNetworkInterface.h"
 
 /* Adapted from https://gist.github.com/austinmarton/1922600
  * and     from https://gist.github.com/austinmarton/2862515
@@ -85,8 +86,8 @@ int main(int argc, char *argv[])
 
         //cout << "Sizes: EF: " << sizeof(EthernetFrame) << ", MAC: " << sizeof(MacAddress) << endl;
         //cout << "Sizes Original: EF " << sizeof(ether_header) << endl;
-
-        EthernetSocket es (interfaceName);
+        LinuxNetworkInterface linuxNetworkInterface;
+        EthernetSocket es (interfaceName, linuxNetworkInterface);
         EthernetDiscovery ed (es);
 
         if (isSender) {

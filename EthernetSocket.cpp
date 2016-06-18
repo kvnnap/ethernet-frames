@@ -21,16 +21,17 @@
 using namespace std;
 using namespace Network;
 
-EthernetSocket::EthernetSocket(const string &p_interfaceName)
-    : interfaceName ( p_interfaceName ), socket_address(), sendBuffer (BUFFER_SIZE), receiveBuffer (BUFFER_SIZE)
+EthernetSocket::EthernetSocket(const string &p_interfaceName, INetworkInterface& p_netInterface)
+    : interfaceName ( p_interfaceName ), socket_address(), sendBuffer (BUFFER_SIZE), receiveBuffer (BUFFER_SIZE),
+      netInterface ( p_netInterface )
 {
     if (p_interfaceName.length() > IFNAMSIZ) {
         // Throw exception
-        throw invalid_argument("Interface name is too long.");
+        throw invalid_argument("INetworkInterface name is too long.");
     }
 
     // Open RAW socket to send on
-    if ((sockfd = socket(AF_PACKET, SOCK_RAW, htons(CUSTOM_ETH_TYPE))) == -1) {
+    if ((sockfd = netInterface.socket(AF_PACKET, SOCK_RAW, htons(CUSTOM_ETH_TYPE))) == -1) {
         throw invalid_argument(strerror(errno));
     }
 
@@ -39,8 +40,8 @@ EthernetSocket::EthernetSocket(const string &p_interfaceName)
         // value-initialisation will perform zero-initialisation
         struct ifreq if_idx {};
         p_interfaceName.copy(if_idx.ifr_name, p_interfaceName.length());
-        if (ioctl(sockfd, SIOCGIFINDEX, &if_idx) < 0) {
-            close(sockfd);
+        if (netInterface.ioctl(sockfd, SIOCGIFINDEX, &if_idx) < 0) {
+            netInterface.close(sockfd);
             throw invalid_argument(string("SIOCGIFINDEX") + strerror(errno));
         }
         socket_address.sll_ifindex = if_idx.ifr_ifindex;
@@ -51,8 +52,8 @@ EthernetSocket::EthernetSocket(const string &p_interfaceName)
         // value-initialisation will perform zero-initialisation
         struct ifreq if_mac {};
         p_interfaceName.copy(if_mac.ifr_name, p_interfaceName.length());
-        if (ioctl(sockfd, SIOCGIFHWADDR, &if_mac) < 0) {
-            close(sockfd);
+        if (netInterface.ioctl(sockfd, SIOCGIFHWADDR, &if_mac) < 0) {
+            netInterface.close(sockfd);
             throw invalid_argument(string("SIOCGIFHWADDR") + strerror(errno));
         }
         interfaceMac.setMacArray(*(uint8_t(*)[6])&if_mac.ifr_hwaddr.sa_data);
@@ -62,27 +63,27 @@ EthernetSocket::EthernetSocket(const string &p_interfaceName)
     {
         struct ifreq if_opts {};
         p_interfaceName.copy(if_opts.ifr_name, p_interfaceName.length());
-        if (ioctl(sockfd, SIOCGIFFLAGS, &if_opts) < 0) {
-            close(sockfd);
+        if (netInterface.ioctl(sockfd, SIOCGIFFLAGS, &if_opts) < 0) {
+            netInterface.close(sockfd);
             throw invalid_argument(string("SIOCGIFFLAGS") + strerror(errno));
         }
         // Add promiscuous mode to flags
         if_opts.ifr_flags |= IFF_PROMISC;
-        if (ioctl(sockfd, SIOCSIFFLAGS, &if_opts) < 0) {
-            close(sockfd);
+        if (netInterface.ioctl(sockfd, SIOCSIFFLAGS, &if_opts) < 0) {
+            netInterface.close(sockfd);
             throw invalid_argument(string("SIOCSIFFLAGS") + strerror(errno));
         }
     }
 
     // Bind to device (For Reading)
-    if (setsockopt(sockfd, SOL_SOCKET, SO_BINDTODEVICE, p_interfaceName.c_str(), IFNAMSIZ - 1) == -1)	{
-        close(sockfd);
+    if (netInterface.setsockopt(sockfd, SOL_SOCKET, SO_BINDTODEVICE, p_interfaceName.c_str(), IFNAMSIZ - 1) == -1)	{
+        netInterface.close(sockfd);
         throw invalid_argument(string("SO_BINDTODEVICE") + strerror(errno));
     }
 }
 
 EthernetSocket::~EthernetSocket() {
-    close(sockfd);
+    netInterface.close(sockfd);
 }
 
 void EthernetSocket::send(EthernetFrame &ef, const DataBuffer &data) {
@@ -107,7 +108,7 @@ void EthernetSocket::send(EthernetFrame &ef, const DataBuffer &data) {
     size += data.size();
 
     // Send packet
-    if (sendto(sockfd, sendBuffer.data(), size, 0, (struct sockaddr*)&socket_address, sizeof(socket_address)) < 0) {
+    if (netInterface.sendto(sockfd, sendBuffer.data(), size, 0, (struct sockaddr*)&socket_address, sizeof(socket_address)) < 0) {
         throw runtime_error(string("send: ") + strerror(errno));
     }
 }
@@ -115,7 +116,7 @@ void EthernetSocket::send(EthernetFrame &ef, const DataBuffer &data) {
 ssize_t EthernetSocket::receive(ISocketListener * iSocketListener, const MacAddress * destination, const MacAddress * source) {
     ssize_t numBytes;//, validMsgBytes = 0;
 
-    while((numBytes = recvfrom(sockfd, receiveBuffer.data(), receiveBuffer.size(), 0, NULL, NULL)) != -1) {
+    while((numBytes = netInterface.recvfrom(sockfd, receiveBuffer.data(), receiveBuffer.size(), 0, NULL, NULL)) != -1) {
         // We need to make sure we don't break strict type-aliasing rules
         // Check whether G++ guarantees type-punning using union
         // The standard does not allow it for sure
@@ -159,7 +160,7 @@ const DataBuffer &EthernetSocket::getReceiveBuffer() const {
 void EthernetSocket::setReceiveTimeout(uint16_t timeout) {
     // set timeout
     struct timeval tv { timeout / 1000 , (timeout % 1000) * 1000 };
-    setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, (char *)&tv, sizeof(tv));
+    netInterface.setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, (char *)&tv, sizeof(tv));
 }
 
 const MacAddress &EthernetSocket::getInterfaceMac() const {

@@ -17,6 +17,7 @@
 #include "MacAddress.h"
 #include "EthernetFrame.h"
 #include "ISocketListener.h"
+#include "INetworkInterface.h"
 
 namespace Network {
 
@@ -25,7 +26,7 @@ namespace Network {
     class EthernetSocket {
     public:
         // Initialises an Ethernet Socket on the interface provided
-        EthernetSocket(const std::string& p_interfaceName);
+        EthernetSocket(const std::string& p_interfaceName, INetworkInterface& p_netInterface);
         ~EthernetSocket();
 
         const DataBuffer& getReceiveBuffer() const;
@@ -44,6 +45,8 @@ namespace Network {
 
         //
         ISocketListener * iSocketListener;
+
+        INetworkInterface & netInterface;
     };
 
 }
