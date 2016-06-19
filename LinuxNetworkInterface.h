@@ -11,6 +11,7 @@ namespace Network {
     class LinuxNetworkInterface
         : public INetworkInterface
     {
+    public:
         // overridden methods
         int socket(int domain, int type, int protocol) override;
         int ioctl (int fd, unsigned long request, void* args) override;

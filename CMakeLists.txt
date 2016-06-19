@@ -15,6 +15,6 @@ set(SOURCE_FILES
         EthernetDiscovery.cpp EthernetDiscovery.h
         INetworkInterface.cpp INetworkInterface.h
         LinuxNetworkInterface.cpp LinuxNetworkInterface.h
-        SimulatedNetworkInterface.cpp SimulatedNetworkInterface.h)
+        SimulatedNetworkInterface.cpp SimulatedNetworkInterface.h NetworkNode.cpp NetworkNode.h SwitchNode.cpp SwitchNode.h NetDeviceNode.cpp NetDeviceNode.h SimulationData.cpp SimulationData.h)
 
 add_executable(network_discovery ${SOURCE_FILES})
