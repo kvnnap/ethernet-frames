@@ -5,6 +5,9 @@
 #ifndef NETWORK_DISCOVERY_NETDEVICENODE_H
 #define NETWORK_DISCOVERY_NETDEVICENODE_H
 
+#include <mutex>
+#include <condition_variable>
+#include <atomic>
 #include "NetworkNode.h"
 
 namespace Network {
@@ -18,14 +21,20 @@ namespace Network {
         void setPromiscuous (bool val);
         bool getPromiscuous() const;
         void setReceiveThreadTimeout(uint32_t p_msTimeout);
-        void sendTo(const uint8_t * buffer);
+        void sendTo(const uint8_t * buffer, size_t lenBuffer);
+        ssize_t recvFrom(uint8_t * buffer, size_t lenBuffer);
         // Virtual
-        void receive(NetworkNode* from, const uint8_t * buffer) override;
+        void receive(SimulationData& p_simData) override;
 
     private:
         MacAddress macAddress;
-        uint32_t msTimeout;
+        std::atomic<uint32_t> msTimeout;
         bool isPromiscuous;
+
+        std::queue<std::vector<uint8_t>> dataPackets;
+        std::mutex mtx;
+        std::condition_variable cv;
+        bool msgsPending;
     };
 }
 

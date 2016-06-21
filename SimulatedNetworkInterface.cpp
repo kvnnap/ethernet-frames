@@ -149,12 +149,12 @@ ssize_t SimulatedNetworkInterface::sendto(int fd, const void *buf, size_t n, int
         return -1;
     }
     const uint8_t * const buffer = static_cast<const uint8_t *>(buf);
-    netDevices[fd]->sendTo(buffer);
+    netDevices[fd]->sendTo(buffer, n);
 
     while(!nodeSendQueue.empty()) {
-        NetworkNode * recepient = nodeSendQueue.front();
+        SimulationData & simData = nodeSendQueue.front();
+        simData.to->receive(simData);
         nodeSendQueue.pop();
-        //recepient.re
     }
 
     return 0;
@@ -162,16 +162,24 @@ ssize_t SimulatedNetworkInterface::sendto(int fd, const void *buf, size_t n, int
 
 ssize_t SimulatedNetworkInterface::recvfrom(int fd, void *buf, size_t n, int flags, struct sockaddr *addr,
                                                      socklen_t *addr_len) {
-    lock_guard<mutex> lock (mtx);
-    if (fd < 0 || static_cast<size_t>(fd) >= available.size() || available[fd]) {
-        return -1;
+    uint8_t * buffer;
+    NetDeviceNode * netNode;
+
+    {
+        lock_guard<mutex> lock(mtx);
+
+        if (fd < 0 || static_cast<size_t>(fd) >= available.size() || available[fd]) {
+            return -1;
+        }
+        buffer = static_cast<uint8_t *>(buf);
+        netNode = netDevices[fd];
     }
-    return 0;
+    return netNode->recvFrom(buffer, n);
 }
 
-void SimulatedNetworkInterface::sendQueue(NetworkNode *to, const uint8_t *buffer) {
-    lock_guard<mutex> lock (mtx);
-    nodeSendQueue.push(to);
+void SimulatedNetworkInterface::sendQueue(SimulationData& p_simData) {
+    //lock_guard<mutex> lock (mtx);
+    nodeSendQueue.push(p_simData);
 }
 
 

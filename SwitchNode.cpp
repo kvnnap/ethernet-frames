@@ -12,12 +12,23 @@ SwitchNode::SwitchNode(SimulatedNetworkInterface& p_sim)
     : NetworkNode (SWITCH, p_sim)
 { }
 
-void SwitchNode::receive(NetworkNode *from, const uint8_t *buffer) {
+void SwitchNode::receive(SimulationData& p_simData) {
+
+    // set sim data
+    NetworkNode * const from = p_simData.from;
+    SimulationData simData = p_simData;
+    simData.from = this;
+
     // Extract EthernetFrame
-    EthernetFrame ef (buffer);
+    EthernetFrame ef (simData.buffer);
     if (macPortMap.find(ef.sourceMac) == macPortMap.end()) {
         // not found - simply add it
         macPortMap.insert(make_pair(ef.sourceMac, from));
+    }
+
+    // We have it, check if macPortMap is consistent
+    if (macPortMap[ef.sourceMac] != from) {
+        macPortMap[ef.sourceMac] = from;
     }
 
     // Check if we know to whom to send this
@@ -26,18 +37,21 @@ void SwitchNode::receive(NetworkNode *from, const uint8_t *buffer) {
         // Send to everyone except from source
         for (NetNodePt& child : getChildPeerNodes()) {
             if (from != child.get()) {
-                send(child.get(), buffer);
+                simData.to = child.get();
+                send(simData);
             }
         }
         for (NetworkNode * node : getParentPeerNodes()) {
             if (from != node) {
-                send(node, buffer);
+                simData.to = node;
+                send(simData);
             }
         }
     } else {
         NetworkNode * node = macPortMap[ef.destinationMac]; //macPortMap.find(ef.destinationMac)->second;
         if (from != node) {
-            send(node, buffer);
+            simData.to = node;
+            send(simData);
         }
     }
 }

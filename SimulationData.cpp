@@ -5,3 +5,9 @@
 #include "SimulationData.h"
 
 using namespace Network;
+
+
+SimulationData::SimulationData()
+    : to (nullptr), from (nullptr), buffer (nullptr), lenBuffer (), hops ()
+{ }
+

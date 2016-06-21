@@ -22,7 +22,7 @@ namespace Network {
         SimulatedNetworkInterface();
 
         //
-        void sendQueue(NetworkNode* to, const uint8_t * buffer);
+        void sendQueue(SimulationData& p_simData);
 
         // overridden methods
         int socket(int domain, int type, int protocol) override;
@@ -43,7 +43,7 @@ namespace Network {
         std::vector<bool> available;
 
         // used only by networknodes
-        std::queue<NetworkNode *> nodeSendQueue;
+        std::queue<SimulationData> nodeSendQueue;
 
         // Mutex
         std::mutex mtx;

@@ -22,8 +22,8 @@ NetworkNodeType NetworkNode::getType() const {
 }
 
 void NetworkNode::add(NetNodePt netNodePt) {
+    netNodePt->peerRefNodes.push_back(this);
     peerNodes.push_back(move(netNodePt));
-    peerRefNodes.push_back(this);
 }
 
 std::vector<NetNodePt>& NetworkNode::getChildPeerNodes() {
@@ -34,8 +34,8 @@ std::vector<NetworkNode *>& NetworkNode::getParentPeerNodes() {
     return peerRefNodes;
 }
 
-void NetworkNode::send(NetworkNode *to, const uint8_t *buffer) {
-    simulatedNetworkInterface.sendQueue(to, buffer);
+void NetworkNode::send(SimulationData& p_simData) {
+    simulatedNetworkInterface.sendQueue(p_simData);
 }
 
 

@@ -9,6 +9,7 @@
 #include <memory>
 #include <queue>
 #include "MacAddress.h"
+#include "SimulationData.h"
 
 namespace Network {
 
@@ -33,10 +34,10 @@ namespace Network {
         std::vector<NetNodePt>& getChildPeerNodes();
         std::vector<NetworkNode *>& getParentPeerNodes();
 
-        void send(NetworkNode* to, const uint8_t * buffer);
+        void send(SimulationData& p_simData);
 
         // virtual methods
-        virtual void receive(NetworkNode* from, const uint8_t * buffer) = 0;
+        virtual void receive(SimulationData& p_simData) = 0;
 
 
     private:
