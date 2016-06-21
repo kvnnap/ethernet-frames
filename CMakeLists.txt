@@ -15,13 +15,13 @@ set(SOURCE_FILES
         EthernetFrame.cpp EthernetFrame.h
         ISocketListener.cpp ISocketListener.h
         EthernetDiscovery.cpp EthernetDiscovery.h
-        INetworkInterface.cpp INetworkInterface.h
-        LinuxNetworkInterface.cpp LinuxNetworkInterface.h
-        SimulatedNetworkInterface.cpp SimulatedNetworkInterface.h
-        NetworkNode.cpp NetworkNode.h
-        SwitchNode.cpp SwitchNode.h
-        NetDeviceNode.cpp NetDeviceNode.h
-        SimulationData.cpp SimulationData.h)
+        NetworkInterface/INetworkInterface.cpp NetworkInterface/INetworkInterface.h
+        NetworkInterface/LinuxNetworkInterface.cpp NetworkInterface/LinuxNetworkInterface.h
+        NetworkInterface/SimulatedNetworkInterface.cpp NetworkInterface/SimulatedNetworkInterface.h
+        NetworkInterface/NetworkNode.cpp NetworkInterface/NetworkNode.h
+        NetworkInterface/SwitchNode.cpp NetworkInterface/SwitchNode.h
+        NetworkInterface/NetDeviceNode.cpp NetworkInterface/NetDeviceNode.h
+        NetworkInterface/SimulationData.cpp NetworkInterface/SimulationData.h)
 
 add_executable(network_discovery ${SOURCE_FILES})
 target_link_libraries (network_discovery ${CMAKE_THREAD_LIBS_INIT})

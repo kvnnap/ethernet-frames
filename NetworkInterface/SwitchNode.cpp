@@ -3,7 +3,7 @@
 //
 
 #include "SwitchNode.h"
-#include "EthernetFrame.h"
+#include "../EthernetFrame.h"
 
 using namespace std;
 using namespace Network;

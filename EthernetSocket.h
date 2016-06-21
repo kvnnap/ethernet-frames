@@ -17,7 +17,7 @@
 #include "MacAddress.h"
 #include "EthernetFrame.h"
 #include "ISocketListener.h"
-#include "INetworkInterface.h"
+#include "NetworkInterface/INetworkInterface.h"
 
 namespace Network {
 

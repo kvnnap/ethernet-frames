@@ -21,9 +21,9 @@
 #include <thread>
 #include "EthernetSocket.h"
 #include "EthernetDiscovery.h"
-#include "LinuxNetworkInterface.h"
-#include "SimulatedNetworkInterface.h"
-#include "SwitchNode.h"
+#include "NetworkInterface/LinuxNetworkInterface.h"
+#include "NetworkInterface/SimulatedNetworkInterface.h"
+#include "NetworkInterface/SwitchNode.h"
 
 /* Adapted from https://gist.github.com/austinmarton/1922600
  * and     from https://gist.github.com/austinmarton/2862515
@@ -87,38 +87,28 @@ int main(int argc, char *argv[])
 
     try {
 
-        //cout << "Sizes: EF: " << sizeof(EthernetFrame) << ", MAC: " << sizeof(MacAddress) << endl;
-        //cout << "Sizes Original: EF " << sizeof(ether_header) << endl;
-        SimulatedNetworkInterface simulatedNetworkInterface;
-
+        //SimulatedNetworkInterface simulatedNetworkInterface;
         LinuxNetworkInterface linuxNetworkInterface;
-        EthernetSocket es (interfaceName, simulatedNetworkInterface);
+        EthernetSocket es (interfaceName, linuxNetworkInterface);
         EthernetDiscovery ed (es);
 
         if (isSender) {
             cout << "Starting up as Master: Thread ID: " << this_thread::get_id() << endl;
 
-            /*EthernetFrame ef;
-            ef.destinationMac = MacAddress::GetBroadcastMac();
-            ef.setEtherType(ETH_P_IP);
-            //ef.etherType = ;
-            es.send(ef, vector<u_int8_t>(1, 65)); */
-            //send_frame(interfaceName.c_str(), destMac, "Hello");
-
-            EthernetSocket es1 (interfaceName, simulatedNetworkInterface);
-            EthernetDiscovery ed1 (es1);
-            EthernetSocket es2 (interfaceName, simulatedNetworkInterface);
-            EthernetDiscovery ed2 (es2);
-            EthernetSocket es3 (interfaceName, simulatedNetworkInterface);
-            EthernetDiscovery ed3 (es3);
-
-            thread t1 (&EthernetDiscovery::slave, ed1);
-            thread t2 (&EthernetDiscovery::slave, ed2);
-            thread t3 (&EthernetDiscovery::slave, ed3);
+//            EthernetSocket es1 (interfaceName, simulatedNetworkInterface);
+//            EthernetDiscovery ed1 (es1);
+//            EthernetSocket es2 (interfaceName, simulatedNetworkInterface);
+//            EthernetDiscovery ed2 (es2);
+//            EthernetSocket es3 (interfaceName, simulatedNetworkInterface);
+//            EthernetDiscovery ed3 (es3);
+//
+//            thread t1 (&EthernetDiscovery::slave, ed1);
+//            thread t2 (&EthernetDiscovery::slave, ed2);
+//            thread t3 (&EthernetDiscovery::slave, ed3);
             ed.master();
-            t1.join();
-            t2.join();
-            t3.join();
+//            t1.join();
+//            t2.join();
+//            t3.join();
         } else {
             cout << "Starting up as Slave" << endl;
             ed.slave();
