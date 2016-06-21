@@ -4,6 +4,7 @@
 
 #include <iostream>
 #include <sstream>
+#include <numeric>
 #include "EthernetDiscovery.h"
 
 using namespace Network;
@@ -344,10 +345,44 @@ bool EthernetDiscovery::testPermutation(const MacAddress &gateway, const MacAddr
     }
 }
 
+// Combination
+
 void EthernetDiscovery::discoverNetwork() {
 
-    // 2) Pick 3 different SDs
-    //MacAddress * i, * j, * k;
+    // construct set id vector
+    vector<size_t> setIds (connectivitySet.size());
+    iota(setIds.begin(), setIds.end(), 0);
+    vector<vector<size_t>> combs = combinations(setIds, 3);
+    vector<pair<size_t, set<size_t>>> facts;
+
+    // Start tests and construct conditionals
+    for (vector<size_t>& comb : combs) {
+        const MacAddress& i = slaveMacs[*connectivitySet[comb[0]].begin()];
+        const MacAddress& j = slaveMacs[*connectivitySet[comb[1]].begin()];
+        const MacAddress& k = slaveMacs[*connectivitySet[comb[2]].begin()];
+        // Test these three
+        bool I = true, J = true, K = true;
+        bool isSameSwitch = (K = testPermutation(ethernetSocket.getInterfaceMac(), i, j, k)) &&
+                            (J = testPermutation(ethernetSocket.getInterfaceMac(), i, k, j)) &&
+                            (I = testPermutation(ethernetSocket.getInterfaceMac(), j, k ,i));
+        if (isSameSwitch) {
+            // All are under a same switch
+            facts.push_back(make_pair(comb[0], set<size_t>{comb[1], comb[2], comb[3]}));
+        } else {
+            // Find the one which is not under same switch
+            if (!I) {
+                // I is separate from J/K
+                facts.push_back(make_pair(comb[0], set<size_t>{comb[1], comb[2]}));
+            } else if (!J) {
+                facts.push_back(make_pair(comb[1], set<size_t>{comb[0], comb[2]}));
+            } else if (!K) {
+                facts.push_back(make_pair(comb[2], set<size_t>{comb[0], comb[1]}));
+            }
+        }
+    }
+
+    // Make union of all common elements
+
 
 }
 
@@ -390,12 +425,41 @@ void EthernetDiscovery::slave() {
     ethernetSocket.receive(this);
 }
 
+template <class T>
+vector<vector<T>> EthernetDiscovery::combinations(const std::vector<T> &elems,
+                                                                       size_t k) {
+    vector<vector<T>> ret;
+    if (elems.size() < k) {
+        return ret;
+    }
 
+    // Init indices
+    vector<size_t> index (k);
 
+    // Start
+    ssize_t pos = 0;
+    do {
+        // Reset if required
+        for (size_t i = static_cast<size_t>(pos + 1); i < k; ++i) {
+            index[i] = index[i - 1] + 1;
+        }
 
+        // Add this combination
+        vector<T> s;
+        for (size_t i = 0; i < k; ++i) {
+            s.push_back(elems[index[i]]);
+        }
+        ret.push_back(s);
 
+        // Move indices
+        for (pos = k - 1; pos >=0; --pos) {
+            // Check if we can increment
+            if (index[pos] < elems.size() - (k - pos)) {
+                ++index[pos];
+                break;
+            }
+        }
+    } while(pos >= 0);
 
-
-
-
-
+    return ret;
+}

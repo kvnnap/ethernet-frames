@@ -49,6 +49,12 @@ namespace  Network {
 
 
     private:
+
+        template <class T>
+        static std::vector<std::vector<T>> combinations (const std::vector<T>& elems, size_t k);
+
+        // Data
+
         EthernetSocket & ethernetSocket;
 
         std::vector<MacAddress> slaveMacs;
