@@ -17,20 +17,47 @@ SimulatedNetworkInterface::SimulatedNetworkInterface()
 
     // Connect rp3 and rp2 to Main Switch
     MacAddress macAddress;
+    // Master Pi
     macAddress.setArrayElement(5, 1);
     rootNode->add(NetNodePt(new NetDeviceNode(*this, macAddress)));
+
+    // Construct Switch A and connect to Root
+    SwitchNode * sA;
+    rootNode->add(NetNodePt(sA = new SwitchNode(*this)));
+    // Attach two devices to switch sA
     macAddress.setArrayElement(5, 2);
-    rootNode->add(NetNodePt(new NetDeviceNode(*this, macAddress)));
-
-    // Connect Main Switch to second switch
-    SwitchNode * s2;
-    rootNode->add(NetNodePt(s2 = new SwitchNode(*this)));
-    // Connect rp3 and rp2 to Second Switch
+    sA->add(NetNodePt(new NetDeviceNode(*this, macAddress)));
     macAddress.setArrayElement(5, 3);
-    s2->add(NetNodePt(new NetDeviceNode(*this, macAddress)));
-    macAddress.setArrayElement(5, 4);
-    s2->add(NetNodePt(new NetDeviceNode(*this, macAddress)));
+    sA->add(NetNodePt(new NetDeviceNode(*this, macAddress)));
 
+    // Switch B
+    SwitchNode * sB, * sB1;
+    rootNode->add(NetNodePt(sB = new SwitchNode(*this)));
+    // Attach SB1 to sB
+    sB->add(NetNodePt(sB1 = new SwitchNode(*this)));
+    // Attach two devices to switch sB1
+    macAddress.setArrayElement(5, 4);
+    sB1->add(NetNodePt(new NetDeviceNode(*this, macAddress)));
+    macAddress.setArrayElement(5, 5);
+    sB1->add(NetNodePt(new NetDeviceNode(*this, macAddress)));
+
+    // Switch C
+    SwitchNode * sC, * sC1, * sC2;
+    // Attach SC to SB
+    sB->add(NetNodePt(sC = new SwitchNode(*this)));
+    // Attach SC1 and SC2 to SC
+    sC->add(NetNodePt(sC1 = new SwitchNode(*this)));
+    sC->add(NetNodePt(sC2 = new SwitchNode(*this)));
+    // Attach two devices to SC1 and SC2
+    macAddress.setArrayElement(5, 6);
+    sC1->add(NetNodePt(new NetDeviceNode(*this, macAddress)));
+    macAddress.setArrayElement(5, 7);
+    sC1->add(NetNodePt(new NetDeviceNode(*this, macAddress)));
+
+    macAddress.setArrayElement(5, 8);
+    sC2->add(NetNodePt(new NetDeviceNode(*this, macAddress)));
+    macAddress.setArrayElement(5, 9);
+    sC2->add(NetNodePt(new NetDeviceNode(*this, macAddress)));
 
     // Assume we know nothing of this network
     // Scan and save a reference to NetDevices
@@ -181,19 +208,3 @@ void SimulatedNetworkInterface::sendQueue(SimulationData& p_simData) {
     //lock_guard<mutex> lock (mtx);
     nodeSendQueue.push(p_simData);
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

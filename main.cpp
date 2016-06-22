@@ -87,13 +87,26 @@ int main(int argc, char *argv[])
 
     try {
 
-        //SimulatedNetworkInterface simulatedNetworkInterface;
+        SimulatedNetworkInterface simulatedNetworkInterface;
         LinuxNetworkInterface linuxNetworkInterface;
-        EthernetSocket es (interfaceName, linuxNetworkInterface);
-        EthernetDiscovery ed (es);
+        EthernetSocket esMaster (interfaceName, simulatedNetworkInterface);
+        EthernetDiscovery edMaster (esMaster);
 
         if (isSender) {
             cout << "Starting up as Master: Thread ID: " << this_thread::get_id() << endl;
+
+            vector<thread> threads;
+            vector<EthernetSocket> es;
+            vector<EthernetDiscovery> ed;
+            es.reserve(8);
+            ed.reserve(8);
+            threads.reserve(8);
+
+            for (size_t i = 0; i < 8; ++i) {
+                es.emplace_back(interfaceName, simulatedNetworkInterface);
+                ed.emplace_back(es[i]);
+                threads.emplace_back(&EthernetDiscovery::slave, ed[i]);
+            }
 
 //            EthernetSocket es1 (interfaceName, simulatedNetworkInterface);
 //            EthernetDiscovery ed1 (es1);
@@ -105,13 +118,16 @@ int main(int argc, char *argv[])
 //            thread t1 (&EthernetDiscovery::slave, ed1);
 //            thread t2 (&EthernetDiscovery::slave, ed2);
 //            thread t3 (&EthernetDiscovery::slave, ed3);
-            ed.master();
+            edMaster.master();
+            for (size_t i = 0; i < threads.size(); ++i) {
+                threads[i].join();
+            }
 //            t1.join();
 //            t2.join();
 //            t3.join();
         } else {
             cout << "Starting up as Slave" << endl;
-            ed.slave();
+            edMaster.slave();
             //es.recv();
             //recv_frame(interfaceName.c_str(), destMac);
         }

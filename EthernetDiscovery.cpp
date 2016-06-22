@@ -5,6 +5,7 @@
 #include <iostream>
 #include <sstream>
 #include <numeric>
+#include <map>
 #include "EthernetDiscovery.h"
 
 using namespace Network;
@@ -353,7 +354,8 @@ void EthernetDiscovery::discoverNetwork() {
     vector<size_t> setIds (connectivitySet.size());
     iota(setIds.begin(), setIds.end(), 0);
     vector<vector<size_t>> combs = combinations(setIds, 3);
-    vector<pair<size_t, set<size_t>>> facts;
+    map<size_t, set<size_t>> facts;
+    vector<set<size_t>> sameSwitch;
 
     // Start tests and construct conditionals
     for (vector<size_t>& comb : combs) {
@@ -367,22 +369,63 @@ void EthernetDiscovery::discoverNetwork() {
                             (I = testPermutation(ethernetSocket.getInterfaceMac(), j, k ,i));
         if (isSameSwitch) {
             // All are under a same switch
-            facts.push_back(make_pair(comb[0], set<size_t>{comb[1], comb[2], comb[3]}));
+            sameSwitch.push_back({comb[1], comb[2], comb[3]});
         } else {
             // Find the one which is not under same switch
             if (!I) {
                 // I is separate from J/K
-                facts.push_back(make_pair(comb[0], set<size_t>{comb[1], comb[2]}));
+                facts[comb[0]].insert({comb[1], comb[2]});
             } else if (!J) {
-                facts.push_back(make_pair(comb[1], set<size_t>{comb[0], comb[2]}));
+                facts[comb[1]].insert({comb[0], comb[2]});
             } else if (!K) {
-                facts.push_back(make_pair(comb[2], set<size_t>{comb[0], comb[1]}));
+                facts[comb[2]].insert({comb[0], comb[1]});
             }
         }
     }
 
-    // Make union of all common elements
+    using FactType = map<size_t, set<size_t>>::value_type;
+//    // Union done - do some post processing on the facts
+//
+//    FactType * fPrev = nullptr, *fCurr = nullptr;
+//    for (FactType & fact : facts) {
+//        if (fPrev == nullptr) {
+//            fPrev = &fact;
+//            continue;
+//        }
+//        // fPrev already set
+//        fCurr = &fact;
+//        if (fCurr->second.size() < fPrev->second.size()) {
+//            // Can we use this as a useful  fact
+//        } else if (fPrev->second.size() < fCurr->second.size()) {
+//
+//        }
+//        // next
+//        fPrev = fCurr;
+//    }
 
+    // Print Results
+    cout << "Same Switch: " << endl;
+    for (const set<size_t>& sSet : sameSwitch) {
+        cout << "{";
+        for (size_t setId : sSet) {
+            cout << setId;
+            if (setId != *--sSet.end()) {
+                cout << ", ";
+            }
+        }
+        cout << "}" << endl;
+    }
+    cout << "Facts: " << endl;
+    for (const FactType & fact : facts) {
+        cout << fact.first << " < {";
+        for (size_t setId : fact.second) {
+            cout << setId;
+            if (setId != *--fact.second.end()) {
+                cout << ", ";
+            }
+        }
+        cout << "}" << endl;
+    }
 
 }
 
@@ -390,6 +433,7 @@ void EthernetDiscovery::master() {
 
     // Algorithm 1
     getAllDevices();
+
     // Print vector
     cout << "Received From: " << slaveMacs.size() <<  endl;
     for (size_t i = 0; i < slaveMacs.size(); ++i) {
@@ -398,7 +442,7 @@ void EthernetDiscovery::master() {
 
     // Algorithm 2
     partitionBottomLayer();
-    cout << "Connectivity Matrix: " << endl;
+    cout << "Connectivity Sets: " << endl;
     //cout << *connectivityMatrix << endl;
     for (size_t i = 0; i < connectivitySet.size(); ++i) {
         cout << "Set " << i << ": ";
@@ -411,13 +455,8 @@ void EthernetDiscovery::master() {
         cout << endl;
     }
 
-    // Algorithm 3 - Test
-    if (slaveMacs.size() >= 3) {
-        cout << "Test using first 3: " << endl;
-        cout << "0, 1, 2: " << testPermutation(ethernetSocket.getInterfaceMac(), slaveMacs[0], slaveMacs[1], slaveMacs[2]) << endl;
-        cout << "0, 2, 1: " << testPermutation(ethernetSocket.getInterfaceMac(), slaveMacs[0], slaveMacs[2], slaveMacs[1]) << endl;
-        cout << "1, 2, 0: " << testPermutation(ethernetSocket.getInterfaceMac(), slaveMacs[1], slaveMacs[2], slaveMacs[0]) << endl;
-    }
+    // Algorithm 4 - Our version of the idea
+    discoverNetwork();
 
  }
 
@@ -426,8 +465,7 @@ void EthernetDiscovery::slave() {
 }
 
 template <class T>
-vector<vector<T>> EthernetDiscovery::combinations(const std::vector<T> &elems,
-                                                                       size_t k) {
+vector<vector<T>> EthernetDiscovery::combinations(const std::vector<T> &elems, size_t k) {
     vector<vector<T>> ret;
     if (elems.size() < k) {
         return ret;
