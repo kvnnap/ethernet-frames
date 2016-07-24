@@ -19,11 +19,12 @@
 #include <vector>
 #include <stdexcept>
 #include <thread>
-#include "EthernetSocket.h"
-#include "EthernetDiscovery.h"
+#include <NetworkNode/NetworkNodeFactory.h>
+#include "Ethernet/EthernetSocket.h"
+#include "Ethernet/EthernetDiscovery.h"
 #include "NetworkInterface/LinuxNetworkInterface.h"
 #include "NetworkInterface/SimulatedNetworkInterface.h"
-#include "NetworkInterface/SwitchNode.h"
+#include "NetworkNode/SwitchNode.h"
 
 /* Adapted from https://gist.github.com/austinmarton/1922600
  * and     from https://gist.github.com/austinmarton/2862515
@@ -36,7 +37,9 @@ int main(int argc, char *argv[])
 {
 
     string interfaceName = DEFAULT_IF;
+    string pathToTopology;
     bool isSender = true;
+    bool isVirtual = false;
     bool help = false;
 
     // name, hasArg, flag, val
@@ -44,6 +47,7 @@ int main(int argc, char *argv[])
             {"interface", required_argument, nullptr, 'i'},
             {"sender",  no_argument, nullptr, 's'},
             {"receiver",  no_argument, nullptr, 'r'},
+            {"virtual",  required_argument, nullptr, 'v'},
             {"help",   no_argument,       nullptr, 'h'},
             {nullptr, 0,                  nullptr, 0} // Last entry must be all zeros
     };
@@ -60,6 +64,10 @@ int main(int argc, char *argv[])
                 break;
             case 'r':
                 isSender = false;
+                break;
+            case 'v':
+                isVirtual = true;
+                pathToTopology = optarg;
                 break;
             case 'h':
                 help = true;
@@ -82,55 +90,45 @@ int main(int argc, char *argv[])
         << "\t--interface=[interface name], default: " << DEFAULT_IF << endl
         << "\t--sender - Sets as sender" << endl
         << "\t--receiver - Sets as receiver" << endl
+        << "\t--virtual=[netTopology.xml] - Simulate master and receivers using a virtual network topology" << endl
         << "\t--help - Shows this Usage Information" << endl;
         return EXIT_SUCCESS;
     }
 
     try {
 
-        SimulatedNetworkInterface simulatedNetworkInterface;
-        LinuxNetworkInterface linuxNetworkInterface;
-        EthernetSocket esMaster (interfaceName, simulatedNetworkInterface);
-        EthernetDiscovery edMaster (esMaster);
-
-        if (isSender) {
-            cout << "Starting up as Master: Thread ID: " << this_thread::get_id() << endl;
+        if (isVirtual) {
+            NetworkNodeFactory netNodeFactory;
+            SimulatedNetworkInterface simulatedNetworkInterface (netNodeFactory.make(pathToTopology));
+            EthernetSocket esMaster (interfaceName, simulatedNetworkInterface);
+            EthernetDiscovery edMaster (esMaster);
 
             vector<thread> threads;
             vector<EthernetSocket> es;
             vector<EthernetDiscovery> ed;
-            es.reserve(8);
-            ed.reserve(8);
-            threads.reserve(8);
-
-            for (size_t i = 0; i < 8; ++i) {
+            const size_t numDevices = simulatedNetworkInterface.getNumNetDevices() - 1;
+            es.reserve(numDevices);
+            ed.reserve(numDevices);
+            threads.reserve(numDevices);
+            for (size_t i = 0; i < numDevices; ++i) {
                 es.emplace_back(interfaceName, simulatedNetworkInterface);
                 ed.emplace_back(es[i]);
                 threads.emplace_back(&EthernetDiscovery::slave, ed[i]);
             }
-
-//            EthernetSocket es1 (interfaceName, simulatedNetworkInterface);
-//            EthernetDiscovery ed1 (es1);
-//            EthernetSocket es2 (interfaceName, simulatedNetworkInterface);
-//            EthernetDiscovery ed2 (es2);
-//            EthernetSocket es3 (interfaceName, simulatedNetworkInterface);
-//            EthernetDiscovery ed3 (es3);
-//
-//            thread t1 (&EthernetDiscovery::slave, ed1);
-//            thread t2 (&EthernetDiscovery::slave, ed2);
-//            thread t3 (&EthernetDiscovery::slave, ed3);
             edMaster.master();
             for (size_t i = 0; i < threads.size(); ++i) {
                 threads[i].join();
             }
-//            t1.join();
-//            t2.join();
-//            t3.join();
         } else {
-            cout << "Starting up as Slave" << endl;
-            edMaster.slave();
-            //es.recv();
-            //recv_frame(interfaceName.c_str(), destMac);
+            LinuxNetworkInterface linuxNetworkInterface;
+            EthernetSocket es (interfaceName, linuxNetworkInterface);
+            EthernetDiscovery ed (es);
+
+            if (isSender) {
+                ed.master();
+            } else {
+                ed.slave();
+            }
         }
 
     } catch(const exception& ex) {

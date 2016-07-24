@@ -8,7 +8,7 @@
 #include <vector>
 #include <memory>
 #include <queue>
-#include "../MacAddress.h"
+#include "Ethernet/MacAddress.h"
 #include "SimulationData.h"
 
 namespace Network {

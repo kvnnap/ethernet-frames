@@ -7,9 +7,9 @@
 using namespace std;
 using namespace Network;
 
-const MacAddress MacAddress::BroadcastMac ({0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF});
-const MacAddress MacAddress::UA1 ({0x00, 0x00, 0x5E, 0x00, 0x52, 0x02});
-const MacAddress MacAddress::UA2 ({0x00, 0x00, 0x5E, 0x00, 0x52, 0x03});
+const MacAddress MacAddress::BroadcastMac ((Mac){0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF});
+const MacAddress MacAddress::UA1 ((Mac){0x00, 0x00, 0x5E, 0x00, 0x52, 0x02});
+const MacAddress MacAddress::UA2 ((Mac){0x00, 0x00, 0x5E, 0x00, 0x52, 0x03});
 
 MacAddress::MacAddress()
     : mac ()
@@ -19,7 +19,16 @@ MacAddress::MacAddress(const Mac &p_mac)
     : mac (p_mac)
 { }
 
-
+MacAddress::MacAddress(const std::string &str) {
+    sscanf(str.c_str(), "%02hhx:%02hhx:%02hhx:%02hhx:%02hhx:%02hhx",
+           &mac[0],
+           &mac[1],
+           &mac[2],
+           &mac[3],
+           &mac[4],
+           &mac[5]
+    );
+}
 
 const Mac& MacAddress::getMacArray() const {
     return mac;

@@ -26,6 +26,7 @@ namespace Network {
 
         MacAddress();
         MacAddress(const Mac& p_mac);
+        MacAddress(const std::string& strMac);
 
         bool operator==(const MacAddress& other) const;
         bool operator!=(const MacAddress& other) const;

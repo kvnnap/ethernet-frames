@@ -5,60 +5,13 @@
 #include <iostream>
 #include <queue>
 #include "SimulatedNetworkInterface.h"
-#include "NetDeviceNode.h"
 
 using namespace std;
 using namespace Network;
 
-SimulatedNetworkInterface::SimulatedNetworkInterface()
+SimulatedNetworkInterface::SimulatedNetworkInterface(NetNodePt p_rootNode)
+    : rootNode (move(p_rootNode))
 {
-    // Generate dummy network
-    rootNode.reset(new SwitchNode());
-
-    // Connect rp3 and rp2 to Main Switch
-    MacAddress macAddress;
-    // Master Pi
-    macAddress.setArrayElement(5, 1);
-    rootNode->add(NetNodePt(new NetDeviceNode(macAddress)));
-
-    // Construct Switch A and connect to Root
-    SwitchNode * sA;
-    rootNode->add(NetNodePt(sA = new SwitchNode()));
-    // Attach two devices to switch sA
-    macAddress.setArrayElement(5, 2);
-    sA->add(NetNodePt(new NetDeviceNode(macAddress)));
-    macAddress.setArrayElement(5, 3);
-    sA->add(NetNodePt(new NetDeviceNode(macAddress)));
-
-    // Switch B
-    SwitchNode * sB, * sB1;
-    rootNode->add(NetNodePt(sB = new SwitchNode()));
-    // Attach SB1 to sB
-    sB->add(NetNodePt(sB1 = new SwitchNode()));
-    // Attach two devices to switch sB1
-    macAddress.setArrayElement(5, 4);
-    sB1->add(NetNodePt(new NetDeviceNode(macAddress)));
-    macAddress.setArrayElement(5, 5);
-    sB1->add(NetNodePt(new NetDeviceNode(macAddress)));
-
-    // Switch C
-    SwitchNode * sC, * sC1, * sC2;
-    // Attach SC to SB
-    sB->add(NetNodePt(sC = new SwitchNode()));
-    // Attach SC1 and SC2 to SC
-    sC->add(NetNodePt(sC1 = new SwitchNode()));
-    sC->add(NetNodePt(sC2 = new SwitchNode()));
-    // Attach two devices to SC1 and SC2
-    macAddress.setArrayElement(5, 6);
-    sC1->add(NetNodePt(new NetDeviceNode(macAddress)));
-    macAddress.setArrayElement(5, 7);
-    sC1->add(NetNodePt(new NetDeviceNode(macAddress)));
-
-    macAddress.setArrayElement(5, 8);
-    sC2->add(NetNodePt(new NetDeviceNode(macAddress)));
-    macAddress.setArrayElement(5, 9);
-    sC2->add(NetNodePt(new NetDeviceNode(macAddress)));
-
     // Assume we know nothing of this network
     // Scan and save a reference to NetDevices
     std::queue<NetworkNode *> switchQueue;
@@ -178,7 +131,7 @@ ssize_t SimulatedNetworkInterface::sendto(int fd, const void *buf, size_t n, int
     const uint8_t * const buffer = static_cast<const uint8_t *>(buf);
     netDevices[fd]->sendTo(buffer, n);
 
-    return 0;
+    return n;
 }
 
 ssize_t SimulatedNetworkInterface::recvfrom(int fd, void *buf, size_t n, int flags, struct sockaddr *addr,
@@ -197,3 +150,10 @@ ssize_t SimulatedNetworkInterface::recvfrom(int fd, void *buf, size_t n, int fla
     }
     return netNode->recvFrom(buffer, n);
 }
+
+size_t SimulatedNetworkInterface::getNumNetDevices() {
+    lock_guard<mutex> lock (mtx);
+    return netDevices.size();
+}
+
+

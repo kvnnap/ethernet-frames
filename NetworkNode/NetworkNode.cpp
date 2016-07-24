@@ -3,7 +3,7 @@
 //
 
 #include "NetworkNode.h"
-#include "SimulatedNetworkInterface.h"
+#include "NetworkInterface/SimulatedNetworkInterface.h"
 
 using namespace std;
 using namespace Network;

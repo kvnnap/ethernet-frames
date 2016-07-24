@@ -9,8 +9,8 @@
 #include <atomic>
 #include <map>
 #include "INetworkInterface.h"
-#include "SwitchNode.h"
-#include "NetDeviceNode.h"
+#include "NetworkNode/SwitchNode.h"
+#include "NetworkNode/NetDeviceNode.h"
 
 namespace Network {
     class SimulatedNetworkInterface
@@ -19,10 +19,7 @@ namespace Network {
 
     public:
         // Constructor
-        SimulatedNetworkInterface();
-
-        //
-        void sendQueue(SimulationData& p_simData);
+        SimulatedNetworkInterface(NetNodePt p_rootNode);
 
         // overridden methods
         int socket(int domain, int type, int protocol) override;
@@ -36,6 +33,9 @@ namespace Network {
         ssize_t recvfrom (int fd, void * buf, size_t n,
                           int flags, struct sockaddr* addr,
                           socklen_t * addr_len) override;
+
+        // own methods
+        size_t getNumNetDevices();
 
     private:
         NetNodePt rootNode;

@@ -1,0 +1,23 @@
+<switch>
+	<device mac="00:00:00:00:00:01"></device>
+	<switch>
+		<device mac="00:00:00:00:00:02"></device>
+		<device mac="00:00:00:00:00:03"></device>
+	</switch>
+	<switch>
+		<switch>
+			<device mac="00:00:00:00:00:04"></device>
+			<device mac="00:00:00:00:00:05"></device>
+		</switch>
+		<switch>
+			<switch>
+				<device mac="00:00:00:00:00:06"></device>
+				<device mac="00:00:00:00:00:07"></device>
+			</switch>
+			<switch>
+				<device mac="00:00:00:00:00:08"></device>
+				<device mac="00:00:00:00:00:09"></device>
+			</switch>
+		</switch>
+	</switch>
+</switch>
