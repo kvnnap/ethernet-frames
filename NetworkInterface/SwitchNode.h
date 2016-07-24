@@ -27,9 +27,9 @@ namespace Network {
         : public NetworkNode
     {
     public:
-        SwitchNode(SimulatedNetworkInterface& p_sim);
+        SwitchNode();
 
-        void receive(SimulationData& p_simData) override;
+        void receive(SimulationData& p_simData, std::queue<SimulationData>& nodeSendQueue) override;
     private:
         std::unordered_map<MacAddress, NetworkNode *> macPortMap;
     };

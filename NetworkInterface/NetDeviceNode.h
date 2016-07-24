@@ -15,7 +15,7 @@ namespace Network {
         : public NetworkNode
     {
     public:
-        NetDeviceNode(SimulatedNetworkInterface& p_sim, const MacAddress& p_macAddress);
+        NetDeviceNode(const MacAddress& p_macAddress);
 
         const MacAddress& getMacAddress() const;
         void setPromiscuous (bool val);
@@ -24,7 +24,7 @@ namespace Network {
         void sendTo(const uint8_t * buffer, size_t lenBuffer);
         ssize_t recvFrom(uint8_t * buffer, size_t lenBuffer);
         // Virtual
-        void receive(SimulationData& p_simData) override;
+        void receive(SimulationData& p_simData, std::queue<SimulationData>& nodeSendQueue) override;
 
     private:
         MacAddress macAddress;

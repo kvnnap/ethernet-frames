@@ -42,9 +42,6 @@ namespace Network {
         std::vector<NetDeviceNode *> netDevices;
         std::vector<bool> available;
 
-        // used only by networknodes
-        std::queue<SimulationData> nodeSendQueue;
-
         // Mutex
         std::mutex mtx;
     };

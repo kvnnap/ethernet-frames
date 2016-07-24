@@ -8,11 +8,11 @@
 using namespace std;
 using namespace Network;
 
-SwitchNode::SwitchNode(SimulatedNetworkInterface& p_sim)
-    : NetworkNode (SWITCH, p_sim)
+SwitchNode::SwitchNode()
+    : NetworkNode (SWITCH)
 { }
 
-void SwitchNode::receive(SimulationData& p_simData) {
+void SwitchNode::receive(SimulationData& p_simData, std::queue<SimulationData>& nodeSendQueue) {
 
     // set sim data
     NetworkNode * const from = p_simData.from;
@@ -38,20 +38,20 @@ void SwitchNode::receive(SimulationData& p_simData) {
         for (NetNodePt& child : getChildPeerNodes()) {
             if (from != child.get()) {
                 simData.to = child.get();
-                send(simData);
+                send(simData, nodeSendQueue);
             }
         }
         for (NetworkNode * node : getParentPeerNodes()) {
             if (from != node) {
                 simData.to = node;
-                send(simData);
+                send(simData, nodeSendQueue);
             }
         }
     } else {
         NetworkNode * node = macPortMap[ef.destinationMac]; //macPortMap.find(ef.destinationMac)->second;
         if (from != node) {
             simData.to = node;
-            send(simData);
+            send(simData, nodeSendQueue);
         }
     }
 }

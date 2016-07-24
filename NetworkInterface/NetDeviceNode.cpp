@@ -8,15 +8,15 @@ using namespace std;
 using namespace Network;
 
 
-NetDeviceNode::NetDeviceNode(SimulatedNetworkInterface& p_sim, const MacAddress &p_macAddress)
-    : NetworkNode ( DEVICE, p_sim ),
+NetDeviceNode::NetDeviceNode(const MacAddress &p_macAddress)
+    : NetworkNode ( DEVICE ),
       macAddress (p_macAddress),
       msTimeout (0),
       isPromiscuous (),
       msgsPending ()
 { }
 
-void NetDeviceNode::receive(SimulationData& p_simData) {
+void NetDeviceNode::receive(SimulationData& p_simData, queue<SimulationData>& nodeSendQueue) {
     {
         lock_guard<mutex> lock(mtx);
         dataPackets.push(std::vector<uint8_t>(p_simData.buffer, p_simData.buffer + p_simData.lenBuffer));
@@ -76,13 +76,21 @@ void NetDeviceNode::setReceiveThreadTimeout(uint32_t p_msTimeout) {
 }
 
 void NetDeviceNode::sendTo(const uint8_t *buffer, size_t lenBuffer) {
+    queue<SimulationData> nodeSendQueue;
+
     if (getParentPeerNodes().size() > 0) {
         SimulationData simData;
         simData.from = this;
         simData.to = getParentPeerNodes()[0];
         simData.buffer = buffer;
         simData.lenBuffer = lenBuffer;
-        send(simData);
+        send(simData, nodeSendQueue);
+    }
+
+    while(!nodeSendQueue.empty()) {
+        SimulationData & simData = nodeSendQueue.front();
+        simData.to->receive(simData, nodeSendQueue);
+        nodeSendQueue.pop();
     }
 }
 

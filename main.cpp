@@ -44,7 +44,8 @@ int main(int argc, char *argv[])
             {"interface", required_argument, nullptr, 'i'},
             {"sender",  no_argument, nullptr, 's'},
             {"receiver",  no_argument, nullptr, 'r'},
-            {"help",   no_argument,       nullptr, 'h'}
+            {"help",   no_argument,       nullptr, 'h'},
+            {nullptr, 0,                  nullptr, 0} // Last entry must be all zeros
     };
 
     int c;

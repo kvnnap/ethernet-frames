@@ -27,18 +27,22 @@ namespace Network {
     public:
 
         virtual ~NetworkNode();
-        NetworkNode(NetworkNodeType p_type, SimulatedNetworkInterface& p_sim);
+        NetworkNode(NetworkNodeType p_type);
 
         NetworkNodeType getType() const;
         void add(NetNodePt netNodePt);
         std::vector<NetNodePt>& getChildPeerNodes();
         std::vector<NetworkNode *>& getParentPeerNodes();
 
-        void send(SimulationData& p_simData);
+        static void send(SimulationData& p_simData, std::queue<SimulationData>& nodeSendQueue);
 
         // virtual methods
-        virtual void receive(SimulationData& p_simData) = 0;
+        virtual void receive(SimulationData& p_simData, std::queue<SimulationData>& nodeSendQueue) = 0;
 
+    protected:
+
+        // used only by networknodes
+        std::queue<SimulationData> nodeSendQueue;
 
     private:
         const NetworkNodeType type;
@@ -46,9 +50,6 @@ namespace Network {
         std::vector<NetNodePt> peerNodes;
         // Not owned, just references
         std::vector<NetworkNode *> peerRefNodes;
-
-        SimulatedNetworkInterface& simulatedNetworkInterface;
-
     };
 
 
