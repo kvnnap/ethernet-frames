@@ -24,7 +24,7 @@ void IndexedTopologyNode::setParent(size_t parentIndex) {
 
 ostream& Network::operator<<(ostream &strm, const IndexedTopologyNode &itn) {
     strm << "IndexedTopologyNode:" << endl
-         << "\tisLeaf: " << itn.isLeaf() << endl;
+         << "\tisLeaf: " << (itn.isLeaf() ? "Yes" : "No" ) << endl;
          if (itn.parentSet) {
              strm << "\tparent: " << itn.parent << endl;
          } else {

@@ -9,6 +9,7 @@
 
 #include "EthernetSocket.h"
 #include "ISocketListener.h"
+#include "IndexedTopologyTree.h"
 
 namespace  Network {
 
@@ -60,6 +61,8 @@ namespace  Network {
         std::vector<MacAddress> slaveMacs;
 
         std::vector<std::set<size_t>> connectivitySet;
+
+        IndexedTopologyTree indexedTopologyTree;
 
         MessageType lastMessage;
         bool testReceived;
