@@ -402,31 +402,24 @@ void EthernetDiscovery::discoverNetwork() {
     });
 
     // Construct tree
-    vector<IndexedTopologyNode> nodes;
+    IndexedTopologyTree indexedTopologyTree;
     // Maps to index of node
     unordered_map<set<size_t>, size_t> nodeMap;
     for (const FactType * fact : factList) {
-
         if (nodeMap.find(fact->second) == nodeMap.end()) {
-
             // Create node
-
-            nodes.push_back(IndexedTopologyNode());
-            size_t nodeIndex = nodes.size() - 1;
+            size_t nodeIndex = indexedTopologyTree.getNewNode();
 
             // Add LHS
-            nodes.push_back(IndexedTopologyNode(nodeIndex, fact->first));
-            nodes[nodeIndex].children.push_back(nodes.size() - 1);
+            indexedTopologyTree.addChildToParent(indexedTopologyTree.addNewNode(fact->first), nodeIndex);
 
             // Add RHS
-            nodes.push_back(IndexedTopologyNode(nodeIndex));
-            size_t rhsNodeId = nodes.size() - 1;
-            nodes[nodeIndex].children.push_back(rhsNodeId);
+            size_t rhsNodeId = indexedTopologyTree.getNewNode();
+            indexedTopologyTree.addChildToParent(rhsNodeId, nodeIndex);
 
             // Create node for each child
             for (size_t setId : fact->second) {
-                nodes.push_back(IndexedTopologyNode(rhsNodeId, setId));
-                nodes[rhsNodeId].children.push_back(nodes.size() - 1);
+                indexedTopologyTree.addChildToParent(indexedTopologyTree.addNewNode(setId), rhsNodeId);
             }
 
             // Add to nodeMap
@@ -440,23 +433,19 @@ void EthernetDiscovery::discoverNetwork() {
             size_t rhsNodeId = nodeMap.at(fact->second);
             size_t nodeIndex;
 
-            if (nodes[rhsNodeId].parentSet) {
-                nodeIndex = nodes[rhsNodeId].parent;
+            if (indexedTopologyTree.getNode(rhsNodeId).parentSet) {
+                nodeIndex = indexedTopologyTree.getNode(rhsNodeId).parent;
             } else {
                 // No parent node, add it
-                nodes.push_back(IndexedTopologyNode());
-                nodeIndex = nodes.size() - 1;
+                nodeIndex = indexedTopologyTree.getNewNode();
             }
 
             // Add LHS
-            nodes.push_back(IndexedTopologyNode(nodeIndex, fact->first));
-            nodes[nodeIndex].children.push_back(nodes.size() - 1);
+            indexedTopologyTree.addChildToParent(indexedTopologyTree.addNewNode(fact->first), nodeIndex);
 
             // Link - duplicate if to maintain child order
-            if (!nodes[rhsNodeId].parentSet) {
-                nodes[nodeIndex].children.push_back(rhsNodeId);
-                nodes[rhsNodeId].parent = nodeIndex;
-                nodes[rhsNodeId].parentSet = true;
+            if (!indexedTopologyTree.getNode(rhsNodeId).parentSet) {
+                indexedTopologyTree.addChildToParent(rhsNodeId, nodeIndex);
             }
         }
     }
@@ -486,10 +475,7 @@ void EthernetDiscovery::discoverNetwork() {
         cout << "}" << endl;
     }
 
-    cout << "Nodes: " << endl;
-    for (size_t i = 0; i < nodes.size(); ++i) {
-        cout << i << ") " << nodes[i] << endl;
-    }
+    cout << indexedTopologyTree << endl;
 }
 
 void EthernetDiscovery::master() {

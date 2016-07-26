@@ -12,10 +12,10 @@ namespace Network {
 
     class IndexedTopologyNode {
     public:
-        IndexedTopologyNode();
-        IndexedTopologyNode(size_t parentIndex, size_t p_val = 0);
+        IndexedTopologyNode(size_t p_val = 0);
 
         bool isLeaf() const;
+        void setParent(size_t parentIndex);
 
         std::vector<std::size_t> children;
         std::size_t parent;
@@ -23,17 +23,22 @@ namespace Network {
         bool parentSet;
     };
 
-    std::ostream& operator<< (std::ostream& strm, const IndexedTopologyNode& mac);
+    std::ostream& operator<< (std::ostream& strm, const IndexedTopologyNode& indexedTopologyNode);
 
     class IndexedTopologyTree {
     public:
         size_t getNewNode();
         size_t addNewNode(const IndexedTopologyNode& node);
 
+        IndexedTopologyNode& getNode(size_t index);
+        const std::vector<IndexedTopologyNode>& getNodes() const;
+
         void addChildToParent(size_t childIndex, size_t parentIndex);
     private:
         std::vector<IndexedTopologyNode> nodes;
     };
+
+    std::ostream& operator<< (std::ostream& strm, const IndexedTopologyTree& indexedTopologyTree);
 }
 
 

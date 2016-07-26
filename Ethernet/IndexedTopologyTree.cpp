@@ -12,24 +12,23 @@ bool IndexedTopologyNode::isLeaf() const {
     return children.empty();
 }
 
-IndexedTopologyNode::IndexedTopologyNode()
-    : parent(), val (), parentSet ()
+IndexedTopologyNode::IndexedTopologyNode(size_t p_val)
+    : parent(), val (p_val), parentSet ()
 {
 }
 
-IndexedTopologyNode::IndexedTopologyNode(size_t parentIndex, size_t p_val)
-    : parent(parentIndex), val (p_val), parentSet (true)
-{
+void IndexedTopologyNode::setParent(size_t parentIndex) {
+    parent = parentIndex;
+    parentSet = true;
 }
 
 ostream& Network::operator<<(ostream &strm, const IndexedTopologyNode &itn) {
     strm << "IndexedTopologyNode:" << endl
-         << "\tisLeaf: " << itn.isLeaf() << endl
-         << "\tparent: set: " << itn.parentSet;
-         if (itn.parentSet ) {
-             strm << ", parentVal: " << itn.parent << endl;
+         << "\tisLeaf: " << itn.isLeaf() << endl;
+         if (itn.parentSet) {
+             strm << "\tparent: " << itn.parent << endl;
          } else {
-             strm << endl;
+             strm << "\tparent: N/A (Is Root)" << endl;
          }
          strm << "\tval: " << itn.val << endl
          << "\tchildren: {";
@@ -39,14 +38,13 @@ ostream& Network::operator<<(ostream &strm, const IndexedTopologyNode &itn) {
             strm << ", ";
         }
     }
-    strm << "}" << endl;
+    strm << "}";
     return strm;
 }
 
 void IndexedTopologyTree::addChildToParent(size_t childIndex, size_t parentIndex) {
     nodes[parentIndex].children.push_back(childIndex);
-    nodes[childIndex].parent = parentIndex;
-    nodes[childIndex].parentSet = true;
+    nodes[childIndex].setParent(parentIndex);
 }
 
 size_t IndexedTopologyTree::getNewNode() {
@@ -59,7 +57,17 @@ size_t IndexedTopologyTree::addNewNode(const IndexedTopologyNode &node) {
     return nodes.size() - 1;
 }
 
+IndexedTopologyNode& IndexedTopologyTree::getNode(size_t index) {
+    return nodes[index];
+}
 
+const std::vector<IndexedTopologyNode>& IndexedTopologyTree::getNodes() const {
+    return nodes;
+}
 
-
-
+ostream& Network::operator<<(ostream &strm, const IndexedTopologyTree &itt) {
+    for (size_t i = 0; i < itt.getNodes().size(); ++i) {
+        strm << i << ") " << itt.getNodes()[i] << endl;
+    }
+    return strm;
+}
