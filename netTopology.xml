@@ -5,6 +5,10 @@
 		<device mac="00:00:00:00:00:03"></device>
 	</switch>
 	<switch>
+		<device mac="00:00:00:00:00:10"></device>
+		<device mac="00:00:00:00:00:11"></device>
+	</switch>
+	<switch>
 		<switch>
 			<device mac="00:00:00:00:00:04"></device>
 			<device mac="00:00:00:00:00:05"></device>

@@ -68,4 +68,22 @@ namespace  Network {
 
 }
 
+namespace std {
+
+    template <>
+    struct hash<std::set<size_t>>
+    {
+        std::size_t operator()(const std::set<size_t>& k) const
+        {
+            size_t ret = 0;
+            size_t i = 0;
+            for (size_t n : k) {
+                ret += ++i * n;
+            }
+            return ret;
+        }
+    };
+
+}
+
 #endif //NETWORK_DISCOVERY_ETHERNETDISCOVERY_H
