@@ -49,7 +49,9 @@ namespace  Network {
         // Algorithm 4
         void discoverNetwork();
 
+        // Ping Based Approach
         static std::vector<size_t> hopCountToTopology(const Mathematics::Matrix<uint32_t>& hopMatrix);
+        static Mathematics::Matrix<uint32_t> rttToHopCount(const Mathematics::Matrix<float>& rttMatrix);
 
     private:
 

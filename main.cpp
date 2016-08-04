@@ -105,32 +105,24 @@ int main(int argc, char *argv[])
 
         if (isPingBased) {
             cout << "Warning: This algorithm is still under construction - using Mock Data as input" << endl;
-            Mathematics::Matrix<uint32_t> hopCountMatrix (6, 6);
-            hopCountMatrix(0, 1) =
-            hopCountMatrix(2, 3) =
-            hopCountMatrix(4, 5) = 1;
-
-            hopCountMatrix(0, 2) =
-            hopCountMatrix(0, 3) =
-            hopCountMatrix(1, 2) =
-            hopCountMatrix(1, 3) =
-            hopCountMatrix(2, 4) =
-            hopCountMatrix(2, 5) =
-            hopCountMatrix(3, 4) =
-            hopCountMatrix(3, 5) = 2;
-
-            hopCountMatrix(0, 4) =
-            hopCountMatrix(0, 5) =
-            hopCountMatrix(1, 4) =
-            hopCountMatrix(1, 5) = 3;
-
-            for (size_t r = 0; r < hopCountMatrix.getRows(); ++r) {
-                for (size_t c = 0; c < r; ++c) {
-                    hopCountMatrix(r, c) = hopCountMatrix(c, r);
+            Mathematics::Matrix<float> rttMatrix (6, 6);
+            vector<vector<float>> rttArr {
+                    {0.f, .131f, .157f, .156f, .173f, .175f},
+                    {.134f, 0.f, .159f, .158f, .176f, .177f},
+                    {.160f, .155f, 0.f, .132f, .158f, .159f},
+                    {.159f, .159f, .132f, 0.f, .159f, .159f},
+                    {.176f, .176f, .159f, .159f, 0.f, .132f},
+                    {.176f, .175f, .159f, .156f, .132f, 0.f}
+            };
+            for (size_t r = 0; r < rttArr.size(); ++r) {
+                for (size_t c = 0; c < rttArr[r].size(); ++c) {
+                    rttMatrix (r, c) = rttArr[r][c];
                 }
             }
 
-            cout << "Hop Count Matrix:" << endl << hopCountMatrix << endl;
+            cout << "RTT Matrix:" << endl << rttMatrix << endl;
+            Mathematics::Matrix<uint32_t> hopCountMatrix = EthernetDiscovery::rttToHopCount(rttMatrix);
+            cout << "Hop Count Matrix: " << endl << hopCountMatrix << endl;
             vector<size_t> parent = EthernetDiscovery::hopCountToTopology(hopCountMatrix);
             cout << "parent:" << endl;
             for (size_t i = 0; i < parent.size(); ++i) {

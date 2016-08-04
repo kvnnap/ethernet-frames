@@ -693,3 +693,113 @@ vector<size_t> EthernetDiscovery::hopCountToTopology(const Matrix<uint32_t> &hop
 
     return parent;
 }
+
+// Data Clustering
+Matrix<uint32_t> EthernetDiscovery::rttToHopCount(const Matrix<float> &rttMatrix) {
+    float numRTT = 8.f;
+    float interThreshold = 3.f;
+
+    // Store matrix in array
+    vector<float> rttValues;
+    for (size_t r = 0; r < rttMatrix.getRows(); ++r) {
+        for (size_t c = 0; c < rttMatrix.getColumns(); ++c) {
+            if (r != c) {
+                rttValues.push_back(rttMatrix(r, c));
+            }
+        }
+    }
+    sort(rttValues.begin(), rttValues.end());
+    float measurementNoise = numRTT * 0.001f;
+    size_t numClass = 0;
+
+    // Needed struct
+    struct DataClass {
+        float lowerBound;
+        float upperBound;
+        uint32_t hopCount;
+
+        float center() const {
+            return lowerBound + 0.5f * (upperBound - lowerBound);
+        }
+
+        bool contains(float val) const {
+            return lowerBound <= val && val <= upperBound;
+        }
+
+        // For debug info
+        string toString() const {
+            return "lower: " + to_string(lowerBound) + " upper:" + to_string(upperBound);
+        }
+    };
+
+    // Initial Clustering
+    vector<DataClass> dataClasses;
+    dataClasses.push_back({rttValues[0], 0.f});
+    float prev = rttValues[0];
+    for (size_t i = 0; i < rttValues.size(); ++i) {
+        if (rttValues[i] - prev < measurementNoise) {
+            prev = rttValues[i]; // expand the class
+        } else {
+            dataClasses[numClass].upperBound = prev;
+            ++numClass;
+            dataClasses.push_back({rttValues[i], 0.f});
+            prev = rttValues[i];
+        }
+    }
+    dataClasses[numClass].upperBound = prev;
+
+    // Further Clustering
+    bool hasMerged;
+    float smallestInterClassGap;
+    do {
+        hasMerged = false;
+        for (size_t i = 0; i < dataClasses.size() - 1; ++i) {
+            const float intraClassI = dataClasses[i].upperBound - dataClasses[i].lowerBound;
+            const float interClassI1 = dataClasses[i].center(); //dataClasses[i].lowerBound + 0.5f * intraClassI;
+            const float interClassI2 = dataClasses[i + 1].center(); //dataClasses[i+1].lowerBound + 0.5f * (dataClasses[i+1].upperBound - dataClasses[i+1].lowerBound);
+            const float interClassI = interClassI2 - interClassI1;
+
+            // Need to guarantee that inter >= interThreshold * intra .. otherwise merge
+            if (intraClassI > interClassI / interThreshold) {
+                // Merge classes
+                dataClasses[i].upperBound = dataClasses[i+1].upperBound;
+                dataClasses.erase(dataClasses.begin() + (i + 1));
+                --i;
+                hasMerged = true;
+            }
+
+            // Find smallest gap
+            if (i == 0) {
+                smallestInterClassGap = interClassI;
+            } else {
+                if (smallestInterClassGap > interClassI) {
+                    smallestInterClassGap = interClassI;
+                }
+            }
+        }
+    } while (hasMerged);
+
+    // Calculate hops for each class
+    dataClasses[0].hopCount = 1;
+    for (size_t i = 1; i < dataClasses.size(); ++i) {
+        dataClasses[i].hopCount = dataClasses[i - 1].hopCount +
+                floor(( dataClasses[i].center() - dataClasses[i - 1].center() + 0.5f * smallestInterClassGap ) / smallestInterClassGap);
+    }
+
+    // Compute HopCount matrix
+    Matrix<uint32_t> hopCountMatrix (rttMatrix.getRows(), rttMatrix.getColumns());
+    for (size_t r = 0; r < hopCountMatrix.getRows(); ++r) {
+        for (size_t c = 0; c < hopCountMatrix.getColumns(); ++c) {
+            if (r != c) {
+                for (const DataClass &dataClass : dataClasses) {
+                    if (dataClass.contains(rttMatrix(r, c))) {
+                        hopCountMatrix(r, c) = dataClass.hopCount;
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    return hopCountMatrix;
+}
