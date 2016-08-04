@@ -39,6 +39,7 @@ int main(int argc, char *argv[])
     string interfaceName = DEFAULT_IF;
     string pathToTopology;
     bool isSender = true;
+    bool isPingBased = false;
     bool isVirtual = false;
     bool help = false;
 
@@ -46,6 +47,7 @@ int main(int argc, char *argv[])
     option options[] = {
             {"interface", required_argument, nullptr, 'i'},
             {"sender",  no_argument, nullptr, 's'},
+            {"ping",  no_argument, nullptr, 'p'},
             {"receiver",  no_argument, nullptr, 'r'},
             {"virtual",  required_argument, nullptr, 'v'},
             {"help",   no_argument,       nullptr, 'h'},
@@ -61,6 +63,9 @@ int main(int argc, char *argv[])
                 break;
             case 's':
                 isSender = true;
+                break;
+            case 'p':
+                isPingBased = true;
                 break;
             case 'r':
                 isSender = false;
@@ -89,6 +94,7 @@ int main(int argc, char *argv[])
         cout << "Usage:" << endl
         << "\t--interface=[interface name], default: " << DEFAULT_IF << endl
         << "\t--sender - Sets as sender" << endl
+        << "\t--ping   - Uses the ping-hopcount algorithm for discovery" << endl
         << "\t--receiver - Sets as receiver" << endl
         << "\t--virtual=[netTopology.xml] - Simulate master and receivers using a virtual network topology" << endl
         << "\t--help - Shows this Usage Information" << endl;
@@ -96,6 +102,42 @@ int main(int argc, char *argv[])
     }
 
     try {
+
+        if (isPingBased) {
+            cout << "Warning: This algorithm is still under construction - using Mock Data as input" << endl;
+            Mathematics::Matrix<uint32_t> hopCountMatrix (6, 6);
+            hopCountMatrix(0, 1) =
+            hopCountMatrix(2, 3) =
+            hopCountMatrix(4, 5) = 1;
+
+            hopCountMatrix(0, 2) =
+            hopCountMatrix(0, 3) =
+            hopCountMatrix(1, 2) =
+            hopCountMatrix(1, 3) =
+            hopCountMatrix(2, 4) =
+            hopCountMatrix(2, 5) =
+            hopCountMatrix(3, 4) =
+            hopCountMatrix(3, 5) = 2;
+
+            hopCountMatrix(0, 4) =
+            hopCountMatrix(0, 5) =
+            hopCountMatrix(1, 4) =
+            hopCountMatrix(1, 5) = 3;
+
+            for (size_t r = 0; r < hopCountMatrix.getRows(); ++r) {
+                for (size_t c = 0; c < r; ++c) {
+                    hopCountMatrix(r, c) = hopCountMatrix(c, r);
+                }
+            }
+
+            cout << "Hop Count Matrix:" << endl << hopCountMatrix << endl;
+            vector<size_t> parent = EthernetDiscovery::hopCountToTopology(hopCountMatrix);
+            cout << "parent:" << endl;
+            for (size_t i = 0; i < parent.size(); ++i) {
+                cout << i << ") " << parent[i] << endl;
+            }
+            return 0;
+        }
 
         if (isVirtual) {
             NetworkNodeFactory netNodeFactory;

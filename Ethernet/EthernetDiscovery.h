@@ -10,6 +10,7 @@
 #include "EthernetSocket.h"
 #include "ISocketListener.h"
 #include "IndexedTopologyTree.h"
+#include "Mathematics/Matrix.h"
 
 namespace  Network {
 
@@ -48,6 +49,7 @@ namespace  Network {
         // Algorithm 4
         void discoverNetwork();
 
+        static std::vector<size_t> hopCountToTopology(const Mathematics::Matrix<uint32_t>& hopMatrix);
 
     private:
 

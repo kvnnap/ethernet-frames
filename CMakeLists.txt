@@ -21,6 +21,7 @@ find_package (Threads)
 file(GLOB_RECURSE SRC
     Ethernet/*.cpp
     Factory/*.cpp
+    Mathematics/*.cpp
     NetworkInterface/*.cpp
     NetworkNode/*.cpp
     XML/*.cpp

@@ -8,9 +8,11 @@
 #include <map>
 #include <unordered_map>
 #include <algorithm>
+#include <memory>
 #include "EthernetDiscovery.h"
 
 using namespace Network;
+using namespace Mathematics;
 using namespace std;
 
 EthernetDiscovery::EthernetDiscovery(EthernetSocket &ethernetSocket)
@@ -569,4 +571,125 @@ vector<vector<T>> EthernetDiscovery::combinations(const std::vector<T> &elems, s
     } while(pos >= 0);
 
     return ret;
+}
+
+vector<size_t> EthernetDiscovery::hopCountToTopology(const Matrix<uint32_t> &hopMatrix) {
+    unique_ptr<Matrix<uint32_t>> workHCPt (new Matrix<uint32_t>(hopMatrix));
+    size_t N = hopMatrix.getColumns();
+    vector<size_t> nodeNum (N);
+    vector<size_t> parent (N);
+    iota(nodeNum.begin(), nodeNum.end(), 0);
+    size_t newSwitch = N;
+
+    uint32_t largestD;
+    do {
+        const Matrix<uint32_t>& workHC = *workHCPt;
+
+        // Find max distance value in matrix
+        largestD = 0;
+        for (size_t r = 0; r < workHC.getRows(); ++r) {
+            for (size_t c = 0; c < workHC.getColumns(); ++c) {
+                if (largestD < workHC(r, c)) {
+                    largestD = workHC(r, c);
+                }
+            }
+        }
+
+        // Base Case
+        if (largestD == 1) {
+            // Last switch left
+            for (size_t nNum : nodeNum) {
+                parent[nNum] = newSwitch;
+            }
+            parent.push_back(newSwitch);
+        } else {
+            // More than two switches left
+
+            // Find a node n such that there exists a j where WorkHC(n, j) == largestD
+            size_t n = 0;
+            {
+                bool notFound = true;
+                for (size_t r = 0; r < workHC.getRows() && notFound; ++r) {
+                    for (size_t c = 0; c < workHC.getColumns() && notFound; ++c) {
+                        if (workHC(r, c) == largestD) {
+                            notFound = false;
+                            n = r;
+                        }
+                    }
+                }
+                if (notFound) {
+                    throw runtime_error("HopToTopology: No node n found");
+                }
+            }
+
+            // Find all nodes whose distances to n are 1; Let the set of nodes be A
+            set<size_t> A;
+            A.insert(n);
+            for (size_t c = 0; c < workHC.getColumns(); ++c) {
+                if (workHC(n, c) == 1) {
+                    A.insert(c);
+                }
+            }
+
+            // Set parent switch for nodes in set A to be the new switch
+            for (size_t a : A) {
+                parent[nodeNum[a]] = newSwitch;
+            }
+
+            // Reduce the tree by removing all nodes in A and adding a new leaf node newSwitch
+//            nodeNum.erase(remove_if(nodeNum.begin(), nodeNum.end(),
+//                                    [&A](uint32_t val) -> bool { return A.find(val) != A.end(); }), nodeNum.end());
+            {
+                size_t i = 0;
+                for (size_t a : A) {
+                    nodeNum.erase(nodeNum.begin() + (a - i++));
+                }
+            }
+            nodeNum.push_back(newSwitch);
+            parent.push_back(newSwitch++);
+
+            // Recompute WorkHC
+            unique_ptr<Matrix<uint32_t>> tempWorkHCPt (new Matrix<uint32_t>(nodeNum.size(), nodeNum.size()));
+            Matrix<uint32_t> &tempWorkHC = *tempWorkHCPt;
+            auto rIterator = A.begin();
+            for (size_t r = 0, rIndex = 0; r < workHC.getRows(); ++r) {
+                if (rIterator != A.end() && r == *rIterator) {
+                    // Ignore this row
+                    ++rIterator;
+                } else {
+                    auto cIterator = A.begin();
+                    for (size_t c = 0, cIndex = 0; c < workHC.getColumns(); ++c) {
+                        if (cIterator != A.end() && c == *cIterator) {
+                            // Ignore this column
+                            ++cIterator;
+                        } else {
+                            // Valid column/Row by cIndex
+                            tempWorkHC(rIndex, cIndex) = workHC(r, c);
+                            ++cIndex;
+                        }
+                    }
+                    ++rIndex;
+                }
+            }
+
+            // Update last row and column corresponding to newSwitch
+            auto rcIterator = A.begin();
+            for (size_t rc = 0, rcIndex = 0; rc < workHC.getColumns(); ++rc) {
+                if (rcIterator != A.end() && rc == *rcIterator) {
+                    // Ignore this column
+                    ++rcIterator;
+                } else {
+                    // Valid column/Row by cIndex
+                    tempWorkHC(rcIndex, tempWorkHC.getColumns() - 1) = tempWorkHC(tempWorkHC.getRows() - 1, rcIndex) =
+                            workHC(n, rc) - 1;
+                    ++rcIndex;
+                }
+            }
+
+            // Assign new matrix
+            workHCPt = move(tempWorkHCPt);
+        }
+    } while (largestD > 1);
+
+    return parent;
 }
