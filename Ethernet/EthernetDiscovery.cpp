@@ -12,6 +12,7 @@
 #include <chrono>
 #include "EthernetDiscovery.h"
 #include "Mathematics/Statistics.h"
+#include "DataEncoder.h"
 
 using namespace Network;
 using namespace Mathematics;
@@ -198,8 +199,8 @@ bool EthernetDiscovery::dataArrival(Network::EthernetFrame &ef, uint8_t *data, s
             macToPingEf.destinationMac.copyFrom(data + 2);
 
             // Parameters
-            float stdConfidence = *(float *)(data + 8);
-            float threshold = *(float *)(data + 8 + sizeof(float));
+            float stdConfidence = DataEncoder::readValFromNetworkBytes<float>(data + 8);
+            float threshold = DataEncoder::readValFromNetworkBytes<float>(data + 8 + sizeof(float));
 
             // Rtt times
             vector<float> rttTimes;
@@ -259,7 +260,7 @@ bool EthernetDiscovery::dataArrival(Network::EthernetFrame &ef, uint8_t *data, s
             DataBuffer buff (2 + sizeof(float));
             buff[0] = MessageType::END_PING;
             buff[1] = sizeof(float);
-            *(float *)(buff.data() + 2) = Statistics::Mean(rttTimes);
+            DataEncoder::writeValToNetworkBytes(Statistics::Mean(rttTimes), buff.data() + 2);
             ethernetSocket.send(replyEf, buff);
         }
             break;
@@ -286,7 +287,7 @@ bool EthernetDiscovery::dataArrival(Network::EthernetFrame &ef, uint8_t *data, s
         // Host Message
         case MessageType::END_PING:
         {
-            pingTime = *(float *) (data + 2);
+            pingTime = DataEncoder::readValFromNetworkBytes<float>(data + 2);
             if (ef.destinationMac == ethernetSocket.getInterfaceMac()) {
                 return false;
             }
@@ -949,9 +950,9 @@ Matrix<float> EthernetDiscovery::startPingBasedDiscovery() {
             buff[0] = BEGIN_PING;
             buff[1] = sizeof(MacAddress) + 2 * sizeof(float);
             slaveMacs[c].copyTo(buff.data() + 2);
-            // This step might break stuff.. Assuming same byte order and same float standard
-            *(float *)(buff.data() + 2 + sizeof(MacAddress)) = stdConfidence;
-            *(float *)(buff.data() + 2 + sizeof(MacAddress) + sizeof(float)) = threshold;
+
+            DataEncoder::writeValToNetworkBytes(stdConfidence, buff.data() + 2 + sizeof(MacAddress));
+            DataEncoder::writeValToNetworkBytes(threshold, buff.data() + 2 + sizeof(MacAddress) + sizeof(float));
 
             // Send message
             ethernetSocket.send(ef, buff);
