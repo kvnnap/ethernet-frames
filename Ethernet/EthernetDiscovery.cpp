@@ -233,12 +233,15 @@ bool EthernetDiscovery::dataArrival(Network::EthernetFrame &ef, uint8_t *data, s
                 high_resolution_clock::time_point t2 = high_resolution_clock::now();
 
                 // calculate duration
-                duration<float> fSec = t2 - t1;
+                duration<float, milli> fMilliSec = t2 - t1;
 
                 // Push data
-                rttTimes.push_back(fSec.count());
+                rttTimes.push_back(fMilliSec.count());
 
                 if (rttTimes.size() == minMeasurements) {
+                    // Do twice more measurements if not confident enough
+                    minMeasurements *= 2;
+
                     // Check if we're confident enough this time round
                     const float sampleStdDeviation = Statistics::SampleStdDeviation(rttTimes);
                     const float stdDeviationOfTheMean = Statistics::StdDeviationOfTheMean(sampleStdDeviation, rttTimes.size());
