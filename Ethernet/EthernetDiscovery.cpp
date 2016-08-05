@@ -9,7 +9,9 @@
 #include <unordered_map>
 #include <algorithm>
 #include <memory>
+#include <chrono>
 #include "EthernetDiscovery.h"
+#include "Mathematics/Statistics.h"
 
 using namespace Network;
 using namespace Mathematics;
@@ -169,7 +171,7 @@ bool EthernetDiscovery::dataArrival(Network::EthernetFrame &ef, uint8_t *data, s
         }
             break;
 
-            // Slave Message
+        // Slave Message
         case MessageType::PROBE:
         {
             // The destination will be different this time
@@ -178,6 +180,116 @@ bool EthernetDiscovery::dataArrival(Network::EthernetFrame &ef, uint8_t *data, s
             replyEf.destinationMac.copyFrom(data + 2);
             replyEf.sourceMac = ethernetSocket.getInterfaceMac();
             ethernetSocket.send(replyEf, {MessageType::YES});
+        }
+            break;
+
+        // Ping Based Approach
+        // Slave Message
+        case MessageType::BEGIN_PING:
+        {
+            // Setup payload to send
+            DataBuffer payload (1000);
+            payload[0] = PING;
+            payload[1] = 255; // hmm.. need 2 bytes for size
+            iota(payload.begin() + 2, payload.end(), 0);
+
+            // Setup message
+            EthernetFrame macToPingEf;
+            macToPingEf.destinationMac.copyFrom(data + 2);
+
+            // Parameters
+            float stdConfidence = *(float *)(data + 8);
+            float threshold = *(float *)(data + 8 + sizeof(float));
+
+            // Rtt times
+            vector<float> rttTimes;
+            size_t minMeasurements = 2, maxMeasurements = 1024;
+            bool confident = false;
+
+            ethernetSocket.setReceiveTimeout(1000);
+
+            do {
+                using namespace chrono;
+
+                // Setup timer
+                high_resolution_clock::time_point t1 = high_resolution_clock::now();
+
+                // Send
+                ethernetSocket.send(macToPingEf, payload);
+
+                // Receive - This is recursive - Data must be for us and coming from the recepient
+                if (ethernetSocket.receive(this, &ethernetSocket.getInterfaceMac(), &macToPingEf.destinationMac) < 0) {
+                    // Timeout - reset timer
+                    continue;
+                }
+
+                // Sanity check
+                if (lastMessage != PONG) {
+                    throw runtime_error("Slave: Expected Pong but got: " + lastMessage);
+                }
+
+                //
+                high_resolution_clock::time_point t2 = high_resolution_clock::now();
+
+                // calculate duration
+                duration<float> fSec = t2 - t1;
+
+                // Push data
+                rttTimes.push_back(fSec.count());
+
+                if (rttTimes.size() == minMeasurements) {
+                    // Check if we're confident enough this time round
+                    const float sampleStdDeviation = Statistics::SampleStdDeviation(rttTimes);
+                    const float stdDeviationOfTheMean = Statistics::StdDeviationOfTheMean(sampleStdDeviation, rttTimes.size());
+
+                    float confidenceInterval = stdDeviationOfTheMean * stdConfidence;
+
+                    confident = confidenceInterval <= threshold;
+                }
+
+            } while (!confident && rttTimes.size() <= maxMeasurements);
+
+            ethernetSocket.setReceiveTimeout(0);
+
+            // Our mean value has the required confidence or we reached the limit
+            cout << "Total Measurements: " << rttTimes.size() << " stdConfidence: " << stdConfidence << " threshold: " << threshold << endl;
+            EthernetFrame replyEf;
+            replyEf.destinationMac = ef.sourceMac;
+
+            DataBuffer buff (2 + sizeof(float));
+            buff[0] = MessageType::END_PING;
+            buff[1] = sizeof(float);
+            *(float *)(buff.data() + 2) = Statistics::Mean(rttTimes);
+            ethernetSocket.send(replyEf, buff);
+        }
+            break;
+
+        // Slave Message - SPECIAL SLAVE MESSAGE for recursive call
+        case MessageType::PONG:
+        {
+            if (ef.destinationMac == ethernetSocket.getInterfaceMac()) {
+                return false;
+            }
+        }
+            break;
+
+        // Slave Message
+        case MessageType::PING:
+        {
+            // Reply with Pong
+            EthernetFrame replyEf;
+            replyEf.destinationMac = ef.sourceMac;
+            ethernetSocket.send(replyEf, {MessageType::PONG});
+        }
+            break;
+
+        // Host Message
+        case MessageType::END_PING:
+        {
+            pingTime = *(float *) (data + 2);
+            if (ef.destinationMac == ethernetSocket.getInterfaceMac()) {
+                return false;
+            }
         }
             break;
 
@@ -499,7 +611,7 @@ void EthernetDiscovery::discoverNetwork() {
     }
 }
 
-void EthernetDiscovery::master() {
+void EthernetDiscovery::master(bool isPingBased) {
 
     // Algorithm 1
     getAllDevices();
@@ -510,25 +622,38 @@ void EthernetDiscovery::master() {
         cout << i << ") " << slaveMacs[i] << endl;
     }
 
-    // Algorithm 2
-    partitionBottomLayer();
-    cout << "Connectivity Sets: " << endl;
-    //cout << *connectivityMatrix << endl;
-    for (size_t i = 0; i < connectivitySet.size(); ++i) {
-        cout << "Set " << i << ": ";
-        for (const size_t& node : connectivitySet[i]) {
-            cout << node;
-            if (&node != &*--connectivitySet[i].end()) {
-                cout << ", ";
-            }
+    if (isPingBased) {
+        Matrix<float> rttMatrix = startPingBasedDiscovery();
+        cout << "RTT Matrix:" << endl << rttMatrix << endl;
+        Mathematics::Matrix<uint32_t> hopCountMatrix = EthernetDiscovery::rttToHopCount(rttMatrix);
+        cout << "Hop Count Matrix: " << endl << hopCountMatrix << endl;
+        vector<size_t> parent = EthernetDiscovery::hopCountToTopology(hopCountMatrix);
+        cout << "parent:" << endl;
+        for (size_t i = 0; i < parent.size(); ++i) {
+            cout << i << ") " << parent[i] << endl;
         }
-        cout << endl;
+    } else {
+
+        // Algorithm 2
+        partitionBottomLayer();
+        cout << "Connectivity Sets: " << endl;
+        //cout << *connectivityMatrix << endl;
+        for (size_t i = 0; i < connectivitySet.size(); ++i) {
+            cout << "Set " << i << ": ";
+            for (const size_t &node : connectivitySet[i]) {
+                cout << node;
+                if (&node != &*--connectivitySet[i].end()) {
+                    cout << ", ";
+                }
+            }
+            cout << endl;
+        }
+
+        // Algorithm 4 - Our version of the idea
+        discoverNetwork();
+
+        cout << indexedTopologyTree << endl;
     }
-
-    // Algorithm 4 - Our version of the idea
-    discoverNetwork();
-
-    cout << indexedTopologyTree << endl;
 }
 
 void EthernetDiscovery::slave() {
@@ -802,4 +927,43 @@ Matrix<uint32_t> EthernetDiscovery::rttToHopCount(const Matrix<float> &rttMatrix
     }
 
     return hopCountMatrix;
+}
+
+Matrix<float> EthernetDiscovery::startPingBasedDiscovery() {
+    // Will use full-matrix approach for the time being
+    Matrix<float> rttMatrix (slaveMacs.size(), slaveMacs.size());
+
+    DataBuffer buff (2 + sizeof(MacAddress) + 2 * sizeof(float));
+    float stdConfidence = 2.f;
+    float threshold = 0.001f;
+
+    for (size_t r = 0; r < rttMatrix.getRows(); ++r) {
+        for (size_t c = 0; c < rttMatrix.getColumns(); ++c) {
+            if (r == c) continue;
+
+            // Define Ethernet Frame
+            EthernetFrame ef;
+            ef.destinationMac = slaveMacs[r];
+
+            // Setup message
+            buff[0] = BEGIN_PING;
+            buff[1] = sizeof(MacAddress) + 2 * sizeof(float);
+            slaveMacs[c].copyTo(buff.data() + 2);
+            // This step might break stuff.. Assuming same byte order and same float standard
+            *(float *)(buff.data() + 2 + sizeof(MacAddress)) = stdConfidence;
+            *(float *)(buff.data() + 2 + sizeof(MacAddress) + sizeof(float)) = threshold;
+
+            // Send message
+            ethernetSocket.send(ef, buff);
+
+            // Receive message
+            ethernetSocket.receive(this, &ethernetSocket.getInterfaceMac(), &ef.destinationMac);
+            if (lastMessage != END_PING) {
+                throw runtime_error("Out of Sync - Expected END_PING and received: " + lastMessage);
+            }
+            rttMatrix (r, c) = pingTime;
+        }
+    }
+
+    return rttMatrix;
 }

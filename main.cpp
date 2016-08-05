@@ -103,34 +103,6 @@ int main(int argc, char *argv[])
 
     try {
 
-        if (isPingBased) {
-            cout << "Warning: This algorithm is still under construction - using Mock Data as input" << endl;
-            Mathematics::Matrix<float> rttMatrix (6, 6);
-            vector<vector<float>> rttArr {
-                    {0.f, .131f, .157f, .156f, .173f, .175f},
-                    {.134f, 0.f, .159f, .158f, .176f, .177f},
-                    {.160f, .155f, 0.f, .132f, .158f, .159f},
-                    {.159f, .159f, .132f, 0.f, .159f, .159f},
-                    {.176f, .176f, .159f, .159f, 0.f, .132f},
-                    {.176f, .175f, .159f, .156f, .132f, 0.f}
-            };
-            for (size_t r = 0; r < rttArr.size(); ++r) {
-                for (size_t c = 0; c < rttArr[r].size(); ++c) {
-                    rttMatrix (r, c) = rttArr[r][c];
-                }
-            }
-
-            cout << "RTT Matrix:" << endl << rttMatrix << endl;
-            Mathematics::Matrix<uint32_t> hopCountMatrix = EthernetDiscovery::rttToHopCount(rttMatrix);
-            cout << "Hop Count Matrix: " << endl << hopCountMatrix << endl;
-            vector<size_t> parent = EthernetDiscovery::hopCountToTopology(hopCountMatrix);
-            cout << "parent:" << endl;
-            for (size_t i = 0; i < parent.size(); ++i) {
-                cout << i << ") " << parent[i] << endl;
-            }
-            return 0;
-        }
-
         if (isVirtual) {
             NetworkNodeFactory netNodeFactory;
             SimulatedNetworkInterface simulatedNetworkInterface (netNodeFactory.make(pathToTopology));
@@ -149,7 +121,7 @@ int main(int argc, char *argv[])
                 ed.emplace_back(es[i]);
                 threads.emplace_back(&EthernetDiscovery::slave, ed[i]);
             }
-            edMaster.master();
+            edMaster.master(isPingBased);
             for (size_t i = 0; i < threads.size(); ++i) {
                 threads[i].join();
             }
@@ -159,7 +131,7 @@ int main(int argc, char *argv[])
             EthernetDiscovery ed (es);
 
             if (isSender) {
-                ed.master();
+                ed.master(isPingBased);
             } else {
                 ed.slave();
             }

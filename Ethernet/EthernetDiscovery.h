@@ -31,13 +31,18 @@ namespace  Network {
             YES = 7,
             NO = 8,
             SEND_PACKET = 9,
-            PROBE = 10
+            PROBE = 10,
+            // Ping Messages
+            BEGIN_PING = 11,
+            END_PING = 12,
+            PING = 13,
+            PONG = 14
         };
 
         EthernetDiscovery(EthernetSocket& ethernetSocket);
 
         bool dataArrival(EthernetFrame& ef, uint8_t * data, size_t len) override;
-        void master();
+        void master(bool isPingBased);
         void slave();
 
         // Algorithm 1
@@ -49,7 +54,8 @@ namespace  Network {
         // Algorithm 4
         void discoverNetwork();
 
-        // Ping Based Approach
+        // Ping Based Approach - need to still call getAllDevices beforehand
+        Mathematics::Matrix<float> startPingBasedDiscovery();
         static std::vector<size_t> hopCountToTopology(const Mathematics::Matrix<uint32_t>& hopMatrix);
         static Mathematics::Matrix<uint32_t> rttToHopCount(const Mathematics::Matrix<float>& rttMatrix);
 
@@ -70,6 +76,7 @@ namespace  Network {
 
         MessageType lastMessage;
         bool testReceived;
+        float pingTime;
 
     };
 
