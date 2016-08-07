@@ -24,7 +24,7 @@
 #include "Ethernet/EthernetDiscovery.h"
 #include "NetworkInterface/LinuxNetworkInterface.h"
 #include "NetworkInterface/SimulatedNetworkInterface.h"
-#include "NetworkNode/SwitchNode.h"
+#include "Util/StringOperations.h"
 
 /* Adapted from https://gist.github.com/austinmarton/1922600
  * and     from https://gist.github.com/austinmarton/2862515
@@ -38,6 +38,8 @@ int main(int argc, char *argv[])
 
     string interfaceName = DEFAULT_IF;
     string pathToTopology;
+    // StdConfidence, Confidence Interval Value, measurement noise(first pass),interThreshold Coefficient
+    string strPingParameters = "2,0.001,0.008,3";
     bool isSender = true;
     bool isPingBased = false;
     bool isVirtual = false;
@@ -47,7 +49,7 @@ int main(int argc, char *argv[])
     option options[] = {
             {"interface", required_argument, nullptr, 'i'},
             {"sender",  no_argument, nullptr, 's'},
-            {"ping",  no_argument, nullptr, 'p'},
+            {"ping",  optional_argument, nullptr, 'p'},
             {"receiver",  no_argument, nullptr, 'r'},
             {"virtual",  required_argument, nullptr, 'v'},
             {"help",   no_argument,       nullptr, 'h'},
@@ -66,6 +68,7 @@ int main(int argc, char *argv[])
                 break;
             case 'p':
                 isPingBased = true;
+                strPingParameters = optarg ? optarg : strPingParameters;
                 break;
             case 'r':
                 isSender = false;
@@ -94,7 +97,7 @@ int main(int argc, char *argv[])
         cout << "Usage:" << endl
         << "\t--interface=[interface name], default: " << DEFAULT_IF << endl
         << "\t--sender - Sets as sender" << endl
-        << "\t--ping   - Uses the ping-hopcount algorithm for discovery" << endl
+        << "\t--ping=[stdConf,confInterval,noise,interThresholdCoefficient] - Uses the ping-hopcount algorithm for discovery, default: " << strPingParameters << endl
         << "\t--receiver - Sets as receiver" << endl
         << "\t--virtual=[netTopology.xml] - Simulate master and receivers using a virtual network topology" << endl
         << "\t--help - Shows this Usage Information" << endl;
@@ -102,6 +105,18 @@ int main(int argc, char *argv[])
     }
 
     try {
+
+        // Set Ping Parameters
+        vector<string> vPingParameters = Util::StringOperations::split(strPingParameters, ',');
+        if (vPingParameters.size() != 4) {
+            throw runtime_error("Invalid Number of Ping Parameters. Expected 4, have: " + to_string(vPingParameters.size()));
+        }
+        EthernetDiscovery::PingParameters pingParameters {
+                stof(vPingParameters[0]),
+                stof(vPingParameters[1]),
+                stof(vPingParameters[2]),
+                stof(vPingParameters[3])
+        };
 
         if (isVirtual) {
             NetworkNodeFactory netNodeFactory;
@@ -121,6 +136,9 @@ int main(int argc, char *argv[])
                 ed.emplace_back(es[i]);
                 threads.emplace_back(&EthernetDiscovery::slave, ed[i]);
             }
+            if (isPingBased) {
+                edMaster.setPingParameters(pingParameters);
+            }
             edMaster.master(isPingBased);
             for (size_t i = 0; i < threads.size(); ++i) {
                 threads[i].join();
@@ -131,6 +149,9 @@ int main(int argc, char *argv[])
             EthernetDiscovery ed (es);
 
             if (isSender) {
+                if (isPingBased) {
+                    ed.setPingParameters(pingParameters);
+                }
                 ed.master(isPingBased);
             } else {
                 ed.slave();

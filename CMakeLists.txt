@@ -24,6 +24,7 @@ file(GLOB_RECURSE SRC
     Mathematics/*.cpp
     NetworkInterface/*.cpp
     NetworkNode/*.cpp
+    Util/*.cpp
     XML/*.cpp
 )
 add_executable(network_discovery main.cpp ${SRC})

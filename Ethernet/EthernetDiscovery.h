@@ -39,11 +39,23 @@ namespace  Network {
             PONG = 14
         };
 
+        struct PingParameters {
+            float stdConfidence;
+            float confidenceInterval;
+            float measurementNoise;
+            float interThresholdCoefficient;
+        };
+
         EthernetDiscovery(EthernetSocket& ethernetSocket);
 
-        bool dataArrival(EthernetFrame& ef, uint8_t * data, size_t len) override;
+        void setPingParameters(const PingParameters& p_pingParameters);
         void master(bool isPingBased);
         void slave();
+
+        // Overrides
+        bool dataArrival(EthernetFrame& ef, uint8_t * data, size_t len) override;
+
+    private:
 
         // Algorithm 1
         void getAllDevices();
@@ -54,50 +66,37 @@ namespace  Network {
         // Algorithm 4
         void discoverNetwork();
 
-        // Ping Based Approach - need to still call getAllDevices beforehand
-        Mathematics::Matrix<float> startPingBasedDiscovery();
-        static std::vector<size_t> hopCountToTopology(const Mathematics::Matrix<uint32_t>& hopMatrix);
-        static Mathematics::Matrix<uint32_t> rttToHopCount(const Mathematics::Matrix<float>& rttMatrix);
-
-    private:
-
         template <class T>
         static std::vector<std::vector<T>> combinations (const std::vector<T>& elems, size_t k);
 
+        // Ping Based Approach - need to still call getAllDevices beforehand
+        Mathematics::Matrix<float> startPingBasedDiscovery();
+        Mathematics::Matrix<uint32_t> rttToHopCount(const Mathematics::Matrix<float>& rttMatrix) const;
+        static std::vector<size_t> hopCountToTopology(const Mathematics::Matrix<uint32_t>& hopMatrix);
+
         // Data
-
         EthernetSocket & ethernetSocket;
-
         std::vector<MacAddress> slaveMacs;
-
         std::vector<std::set<size_t>> connectivitySet;
-
         IndexedTopologyTree indexedTopologyTree;
 
         MessageType lastMessage;
         bool testReceived;
+
+        // Ping Based Data
         float pingTime;
+        PingParameters pingParameters;
 
     };
 
 }
 
 namespace std {
-
     template <>
     struct hash<std::set<size_t>>
     {
-        std::size_t operator()(const std::set<size_t>& k) const
-        {
-            size_t ret = 0;
-            size_t i = 0;
-            for (size_t n : k) {
-                ret += ++i * n;
-            }
-            return ret;
-        }
+        std::size_t operator()(const std::set<size_t>& k) const;
     };
-
 }
 
 #endif //NETWORK_DISCOVERY_ETHERNETDISCOVERY_H

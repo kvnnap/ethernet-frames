@@ -19,7 +19,7 @@ using namespace Mathematics;
 using namespace std;
 
 EthernetDiscovery::EthernetDiscovery(EthernetSocket &ethernetSocket)
-        : ethernetSocket ( ethernetSocket ), lastMessage (EMPTY), testReceived ( false )
+        : ethernetSocket ( ethernetSocket ), lastMessage (EMPTY), testReceived ( false ), pingTime ( 0.f )
 { }
 
 // returning false breaks the dataArrival infinite loop
@@ -200,7 +200,7 @@ bool EthernetDiscovery::dataArrival(Network::EthernetFrame &ef, uint8_t *data, s
 
             // Parameters
             float stdConfidence = DataEncoder::readValFromNetworkBytes<float>(data + 8);
-            float threshold = DataEncoder::readValFromNetworkBytes<float>(data + 8 + sizeof(float));
+            float confidenceIntervalThreshold = DataEncoder::readValFromNetworkBytes<float>(data + 8 + sizeof(float));
 
             // Rtt times
             vector<float> rttTimes;
@@ -226,7 +226,7 @@ bool EthernetDiscovery::dataArrival(Network::EthernetFrame &ef, uint8_t *data, s
 
                 // Sanity check
                 if (lastMessage != PONG) {
-                    throw runtime_error("Slave: Expected Pong but got: " + lastMessage);
+                    throw runtime_error("Slave: Expected Pong but got: " + to_string(static_cast<uint32_t>(lastMessage)));
                 }
 
                 //
@@ -248,7 +248,7 @@ bool EthernetDiscovery::dataArrival(Network::EthernetFrame &ef, uint8_t *data, s
 
                     float confidenceInterval = stdDeviationOfTheMean * stdConfidence;
 
-                    confident = confidenceInterval <= threshold;
+                    confident = confidenceInterval <= confidenceIntervalThreshold;
                 }
 
             } while (!confident && rttTimes.size() <= maxMeasurements);
@@ -256,7 +256,7 @@ bool EthernetDiscovery::dataArrival(Network::EthernetFrame &ef, uint8_t *data, s
             ethernetSocket.setReceiveTimeout(0);
 
             // Our mean value has the required confidence or we reached the limit
-            cout << "Total Measurements: " << rttTimes.size() << " stdConfidence: " << stdConfidence << " threshold: " << threshold << endl;
+            cout << "Total Measurements: " << rttTimes.size() << " stdConfidence: " << stdConfidence << " confidenceIntervalThreshold: " << confidenceIntervalThreshold << endl;
             EthernetFrame replyEf;
             replyEf.destinationMac = ef.sourceMac;
 
@@ -824,9 +824,7 @@ vector<size_t> EthernetDiscovery::hopCountToTopology(const Matrix<uint32_t> &hop
 }
 
 // Data Clustering
-Matrix<uint32_t> EthernetDiscovery::rttToHopCount(const Matrix<float> &rttMatrix) {
-    float numRTT = 8.f;
-    float interThreshold = 3.f;
+Matrix<uint32_t> EthernetDiscovery::rttToHopCount(const Matrix<float> &rttMatrix) const {
 
     // Store matrix in array
     vector<float> rttValues;
@@ -838,7 +836,7 @@ Matrix<uint32_t> EthernetDiscovery::rttToHopCount(const Matrix<float> &rttMatrix
         }
     }
     sort(rttValues.begin(), rttValues.end());
-    float measurementNoise = numRTT * 0.001f;
+    //float measurementNoise = numRTT * 0.001f;
     size_t numClass = 0;
 
     // Needed struct
@@ -866,7 +864,7 @@ Matrix<uint32_t> EthernetDiscovery::rttToHopCount(const Matrix<float> &rttMatrix
     dataClasses.push_back({rttValues[0], 0.f});
     float prev = rttValues[0];
     for (size_t i = 0; i < rttValues.size(); ++i) {
-        if (rttValues[i] - prev < measurementNoise) {
+        if (rttValues[i] - prev < pingParameters.measurementNoise) {
             prev = rttValues[i]; // expand the class
         } else {
             dataClasses[numClass].upperBound = prev;
@@ -879,7 +877,7 @@ Matrix<uint32_t> EthernetDiscovery::rttToHopCount(const Matrix<float> &rttMatrix
 
     // Further Clustering
     bool hasMerged;
-    float smallestInterClassGap;
+    float smallestInterClassGap = 0.f;
     do {
         hasMerged = false;
         for (size_t i = 0; i < dataClasses.size() - 1; ++i) {
@@ -889,7 +887,7 @@ Matrix<uint32_t> EthernetDiscovery::rttToHopCount(const Matrix<float> &rttMatrix
             const float interClassI = interClassI2 - interClassI1;
 
             // Need to guarantee that inter >= interThreshold * intra .. otherwise merge
-            if (intraClassI > interClassI / interThreshold) {
+            if (intraClassI > interClassI / pingParameters.interThresholdCoefficient) {
                 // Merge classes
                 dataClasses[i].upperBound = dataClasses[i+1].upperBound;
                 dataClasses.erase(dataClasses.begin() + (i + 1));
@@ -912,7 +910,9 @@ Matrix<uint32_t> EthernetDiscovery::rttToHopCount(const Matrix<float> &rttMatrix
     dataClasses[0].hopCount = 1;
     for (size_t i = 1; i < dataClasses.size(); ++i) {
         dataClasses[i].hopCount = dataClasses[i - 1].hopCount +
-                floor(( dataClasses[i].center() - dataClasses[i - 1].center() + 0.5f * smallestInterClassGap ) / smallestInterClassGap);
+                static_cast<uint32_t>(
+                        floor(( dataClasses[i].center() - dataClasses[i - 1].center() + 0.5f * smallestInterClassGap ) / smallestInterClassGap)
+                );
     }
 
     // Compute HopCount matrix
@@ -938,8 +938,6 @@ Matrix<float> EthernetDiscovery::startPingBasedDiscovery() {
     Matrix<float> rttMatrix (slaveMacs.size(), slaveMacs.size());
 
     DataBuffer buff (2 + sizeof(MacAddress) + 2 * sizeof(float));
-    float stdConfidence = 2.f;
-    float threshold = 0.001f;
 
     for (size_t r = 0; r < rttMatrix.getRows(); ++r) {
         for (size_t c = 0; c < rttMatrix.getColumns(); ++c) {
@@ -954,8 +952,8 @@ Matrix<float> EthernetDiscovery::startPingBasedDiscovery() {
             buff[1] = sizeof(MacAddress) + 2 * sizeof(float);
             slaveMacs[c].copyTo(buff.data() + 2);
 
-            DataEncoder::writeValToNetworkBytes(stdConfidence, buff.data() + 2 + sizeof(MacAddress));
-            DataEncoder::writeValToNetworkBytes(threshold, buff.data() + 2 + sizeof(MacAddress) + sizeof(float));
+            DataEncoder::writeValToNetworkBytes(pingParameters.stdConfidence, buff.data() + 2 + sizeof(MacAddress));
+            DataEncoder::writeValToNetworkBytes(pingParameters.confidenceInterval, buff.data() + 2 + sizeof(MacAddress) + sizeof(float));
 
             // Send message
             ethernetSocket.send(ef, buff);
@@ -963,11 +961,24 @@ Matrix<float> EthernetDiscovery::startPingBasedDiscovery() {
             // Receive message
             ethernetSocket.receive(this, &ethernetSocket.getInterfaceMac(), &ef.destinationMac);
             if (lastMessage != END_PING) {
-                throw runtime_error("Out of Sync - Expected END_PING and received: " + lastMessage);
+                throw runtime_error("Out of Sync - Expected END_PING and received: " + to_string(static_cast<uint32_t>(lastMessage)));
             }
             rttMatrix (r, c) = pingTime;
         }
     }
 
     return rttMatrix;
+}
+
+void EthernetDiscovery::setPingParameters(const EthernetDiscovery::PingParameters &p_pingParameters) {
+    pingParameters = p_pingParameters;
+}
+
+size_t std::hash<set<size_t>>::operator()(const std::set<size_t> &k) const {
+    size_t ret = 0;
+    size_t i = 0;
+    for (size_t n : k) {
+        ret += ++i * n;
+    }
+    return ret;
 }

@@ -52,18 +52,16 @@ namespace Network {
                     return static_cast<T>(*buff);
                 case 2:
                 {
-                    uint16_t tval = (buff[0] << 8) | (buff[1] << 0);
-                    uint16_t hVal = ntohs(tval);
+                    uint16_t hVal = ntohs((buff[0] << 8) | (buff[1] << 0));
                     uint8_t * phVal = (uint8_t *)&hVal;
-                    memcpy(pVal, phVal, 2);
+                    memcpy(pVal, phVal, sizeof(hVal));
                     return val;
                 }
                 case 4:
                 {
-                    uint32_t tval = (buff[0] << 24) | (buff[1] << 16) | (buff[2] << 8) | (buff[3] << 0);
-                    uint32_t hVal = ntohl(tval);
+                    uint32_t hVal = ntohl((buff[0] << 24) | (buff[1] << 16) | (buff[2] << 8) | (buff[3] << 0));
                     uint8_t * phVal = (uint8_t *)&hVal;
-                    memcpy(pVal, phVal, 4);
+                    memcpy(pVal, phVal, sizeof(hVal));
                     return val;
                 }
                 default:
