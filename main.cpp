@@ -39,7 +39,7 @@ int main(int argc, char *argv[])
     string interfaceName = DEFAULT_IF;
     string pathToTopology;
     // StdConfidence, Confidence Interval Value, measurement noise(first pass),interThreshold Coefficient
-    string strPingParameters = "2,0.001,0.008,3";
+    string strPingParameters = "2,0.001,0.008,3,2,1024";
     bool isSender = true;
     bool isPingBased = false;
     bool isVirtual = false;
@@ -97,7 +97,7 @@ int main(int argc, char *argv[])
         cout << "Usage:" << endl
         << "\t--interface=[interface name], default: " << DEFAULT_IF << endl
         << "\t--sender - Sets as sender" << endl
-        << "\t--ping=[stdConf,confInterval,noise,interThresholdCoefficient] - Uses the ping-hopcount algorithm for discovery, default: " << strPingParameters << endl
+        << "\t--ping=[stdConf,confInterval,noise,interThresholdCoefficient,minPings,maxPings] - Uses the ping-hopcount algorithm for discovery, default: " << strPingParameters << endl
         << "\t--receiver - Sets as receiver" << endl
         << "\t--virtual=[netTopology.xml] - Simulate master and receivers using a virtual network topology" << endl
         << "\t--help - Shows this Usage Information" << endl;
@@ -108,14 +108,16 @@ int main(int argc, char *argv[])
 
         // Set Ping Parameters
         vector<string> vPingParameters = Util::StringOperations::split(strPingParameters, ',');
-        if (vPingParameters.size() != 4) {
+        if (vPingParameters.size() != 6) {
             throw runtime_error("Invalid Number of Ping Parameters. Expected 4, have: " + to_string(vPingParameters.size()));
         }
         EthernetDiscovery::PingParameters pingParameters {
                 stof(vPingParameters[0]),
                 stof(vPingParameters[1]),
                 stof(vPingParameters[2]),
-                stof(vPingParameters[3])
+                stof(vPingParameters[3]),
+                static_cast<uint32_t>(stoi(vPingParameters[4])),
+                static_cast<uint32_t>(stoi(vPingParameters[5]))
         };
 
         if (isVirtual) {

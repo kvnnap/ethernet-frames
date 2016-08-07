@@ -13,6 +13,9 @@ namespace Mathematics {
 
         template <class T>
         T Mean(const std::vector<T>& samples) {
+            if (samples.size() == 0) {
+                return 0;
+            }
             T val = 0;
             for (const T& sample : samples) {
                 val += sample;

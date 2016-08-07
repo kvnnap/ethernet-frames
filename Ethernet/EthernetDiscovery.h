@@ -44,6 +44,8 @@ namespace  Network {
             float confidenceInterval;
             float measurementNoise;
             float interThresholdCoefficient;
+            uint32_t minMeasurements;
+            uint32_t maxMeasurements;
         };
 
         EthernetDiscovery(EthernetSocket& ethernetSocket);

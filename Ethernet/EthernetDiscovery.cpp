@@ -201,10 +201,11 @@ bool EthernetDiscovery::dataArrival(Network::EthernetFrame &ef, uint8_t *data, s
             // Parameters
             float stdConfidence = DataEncoder::readValFromNetworkBytes<float>(data + 8);
             float confidenceIntervalThreshold = DataEncoder::readValFromNetworkBytes<float>(data + 8 + sizeof(float));
+            size_t minMeasurements = DataEncoder::readValFromNetworkBytes<uint32_t>(data + 8 + 2 * sizeof(float));
+            size_t maxMeasurements = DataEncoder::readValFromNetworkBytes<uint32_t>(data + 8 + 2 * sizeof(float) + sizeof(uint32_t));
 
             // Rtt times
             vector<float> rttTimes;
-            size_t minMeasurements = 2, maxMeasurements = 1024;
             bool confident = false;
 
             ethernetSocket.setReceiveTimeout(1000);
@@ -251,7 +252,7 @@ bool EthernetDiscovery::dataArrival(Network::EthernetFrame &ef, uint8_t *data, s
                     confident = confidenceInterval <= confidenceIntervalThreshold;
                 }
 
-            } while (!confident && rttTimes.size() <= maxMeasurements);
+            } while (!confident && rttTimes.size() < maxMeasurements);
 
             ethernetSocket.setReceiveTimeout(0);
 
@@ -937,7 +938,7 @@ Matrix<float> EthernetDiscovery::startPingBasedDiscovery() {
     // Will use full-matrix approach for the time being
     Matrix<float> rttMatrix (slaveMacs.size(), slaveMacs.size());
 
-    DataBuffer buff (2 + sizeof(MacAddress) + 2 * sizeof(float));
+    DataBuffer buff (2 + sizeof(MacAddress) + 2 * sizeof(float) + 2 * sizeof(uint32_t));
 
     for (size_t r = 0; r < rttMatrix.getRows(); ++r) {
         for (size_t c = 0; c < rttMatrix.getColumns(); ++c) {
@@ -949,11 +950,14 @@ Matrix<float> EthernetDiscovery::startPingBasedDiscovery() {
 
             // Setup message
             buff[0] = BEGIN_PING;
-            buff[1] = sizeof(MacAddress) + 2 * sizeof(float);
+            buff[1] = sizeof(MacAddress) + 2 * sizeof(float) + 2 * sizeof(uint32_t);
             slaveMacs[c].copyTo(buff.data() + 2);
 
             DataEncoder::writeValToNetworkBytes(pingParameters.stdConfidence, buff.data() + 2 + sizeof(MacAddress));
             DataEncoder::writeValToNetworkBytes(pingParameters.confidenceInterval, buff.data() + 2 + sizeof(MacAddress) + sizeof(float));
+
+            DataEncoder::writeValToNetworkBytes(pingParameters.minMeasurements, buff.data() + 2 + sizeof(MacAddress) + 2 * sizeof(float));
+            DataEncoder::writeValToNetworkBytes(pingParameters.maxMeasurements, buff.data() + 2 + sizeof(MacAddress) + 2 * sizeof(float) + sizeof(uint32_t));
 
             // Send message
             ethernetSocket.send(ef, buff);
@@ -971,6 +975,9 @@ Matrix<float> EthernetDiscovery::startPingBasedDiscovery() {
 }
 
 void EthernetDiscovery::setPingParameters(const EthernetDiscovery::PingParameters &p_pingParameters) {
+    if (p_pingParameters.minMeasurements == 0 || p_pingParameters.minMeasurements > p_pingParameters.maxMeasurements) {
+        throw runtime_error("Invalid Ping Parameters Values");
+    }
     pingParameters = p_pingParameters;
 }
 
