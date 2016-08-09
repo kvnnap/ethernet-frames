@@ -29,7 +29,6 @@ SimulatedNetworkInterface::SimulatedNetworkInterface(NetNodePt p_rootNode)
     }
 
     available.resize(netDevices.size(), true);
-    //cout << "NetDeviceCount: " << netDevices.size() << endl;
 }
 
 // Request new socket file-descriptor
@@ -151,9 +150,12 @@ ssize_t SimulatedNetworkInterface::recvfrom(int fd, void *buf, size_t n, int fla
     return netNode->recvFrom(buffer, n);
 }
 
-size_t SimulatedNetworkInterface::getNumNetDevices() {
-    lock_guard<mutex> lock (mtx);
+size_t SimulatedNetworkInterface::getNumNetDevices() const {
     return netDevices.size();
+}
+
+const std::vector<NetDeviceNode *> &SimulatedNetworkInterface::getNetDevices() const {
+    return netDevices;
 }
 
 

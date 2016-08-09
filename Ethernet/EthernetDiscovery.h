@@ -53,6 +53,7 @@ namespace  Network {
         void setPingParameters(const PingParameters& p_pingParameters);
         void master(bool isPingBased);
         void slave();
+        void clear();
 
         // Overrides
         bool dataArrival(EthernetFrame& ef, uint8_t * data, size_t len) override;

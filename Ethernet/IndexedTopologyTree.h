@@ -34,6 +34,7 @@ namespace Network {
         const std::vector<IndexedTopologyNode>& getNodes() const;
 
         void addChildToParent(size_t childIndex, size_t parentIndex);
+        void clear();
     private:
         std::vector<IndexedTopologyNode> nodes;
     };

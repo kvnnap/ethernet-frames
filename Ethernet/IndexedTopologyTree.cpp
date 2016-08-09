@@ -65,6 +65,10 @@ const std::vector<IndexedTopologyNode>& IndexedTopologyTree::getNodes() const {
     return nodes;
 }
 
+void IndexedTopologyTree::clear() {
+    nodes.clear();
+}
+
 ostream& Network::operator<<(ostream &strm, const IndexedTopologyTree &itt) {
     for (size_t i = 0; i < itt.getNodes().size(); ++i) {
         strm << i << ") " << itt.getNodes()[i] << endl;

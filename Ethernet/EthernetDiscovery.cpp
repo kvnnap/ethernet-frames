@@ -22,6 +22,16 @@ EthernetDiscovery::EthernetDiscovery(EthernetSocket &ethernetSocket)
         : ethernetSocket ( ethernetSocket ), lastMessage (EMPTY), testReceived ( false ), pingTime ( 0.f )
 { }
 
+
+void EthernetDiscovery::clear() {
+    slaveMacs.clear();
+    connectivitySet.clear();
+    indexedTopologyTree.clear();
+    lastMessage = EMPTY;
+    testReceived = false;
+    pingTime = 0.f;
+}
+
 // returning false breaks the dataArrival infinite loop
 // or set a timeout interval..
 bool EthernetDiscovery::dataArrival(Network::EthernetFrame &ef, uint8_t *data, size_t len) {
@@ -470,6 +480,8 @@ bool EthernetDiscovery::testPermutation(const MacAddress &gateway, const MacAddr
 // Combination
 
 void EthernetDiscovery::discoverNetwork() {
+
+    indexedTopologyTree.clear();
 
     // Extension! Extended Facts - All LHSs having same RHSs can be joined together in union
     using ExtFactType = map<set<size_t>, set<size_t>>::value_type;

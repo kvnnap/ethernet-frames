@@ -35,7 +35,8 @@ namespace Network {
                           socklen_t * addr_len) override;
 
         // own methods
-        size_t getNumNetDevices();
+        size_t getNumNetDevices() const;
+        const std::vector<NetDeviceNode *>& getNetDevices() const;
 
     private:
         NetNodePt rootNode;

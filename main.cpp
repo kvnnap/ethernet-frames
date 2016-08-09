@@ -37,7 +37,7 @@ int main(int argc, char *argv[])
 {
 
     string interfaceName = DEFAULT_IF;
-    string pathToTopology;
+    string virtualTopologyParameters;
     // StdConfidence, Confidence Interval Value, measurement noise(first pass),interThreshold Coefficient
     string strPingParameters = "2,0.001,0.008,3,2,1024";
     bool isSender = true;
@@ -75,7 +75,7 @@ int main(int argc, char *argv[])
                 break;
             case 'v':
                 isVirtual = true;
-                pathToTopology = optarg;
+                virtualTopologyParameters = optarg;
                 break;
             case 'h':
                 help = true;
@@ -99,7 +99,7 @@ int main(int argc, char *argv[])
         << "\t--sender - Sets as sender" << endl
         << "\t--ping=[stdConf,confInterval,noise,interThresholdCoefficient,minPings,maxPings] - Uses the ping-hopcount algorithm for discovery, default: " << strPingParameters << endl
         << "\t--receiver - Sets as receiver" << endl
-        << "\t--virtual=[netTopology.xml] - Simulate master and receivers using a virtual network topology" << endl
+        << "\t--virtual=[netTopology.xml,masterIndex,masterRunCount] - Simulate master and receivers using a virtual network topology" << endl
         << "\t--help - Shows this Usage Information" << endl;
         return EXIT_SUCCESS;
     }
@@ -121,27 +121,54 @@ int main(int argc, char *argv[])
         };
 
         if (isVirtual) {
+
+            // Parse virtual topology parameters
+            vector<string> vTopologyParameters = Util::StringOperations::split(virtualTopologyParameters, ',');
+            if (vTopologyParameters.size() == 0) {
+                throw runtime_error("Invalid virtual topology parameters passed in argument");
+            }
+
             NetworkNodeFactory netNodeFactory;
-            SimulatedNetworkInterface simulatedNetworkInterface (netNodeFactory.make(pathToTopology));
-            EthernetSocket esMaster (interfaceName, simulatedNetworkInterface);
-            EthernetDiscovery edMaster (esMaster);
+            SimulatedNetworkInterface simulatedNetworkInterface (netNodeFactory.make(vTopologyParameters[0]));
+
+            const size_t masterIndex = vTopologyParameters.size() > 1 ? static_cast<uint32_t>(stoi(vTopologyParameters[1])) : 0;
+            const size_t masterRunCount = vTopologyParameters.size() > 2 ? static_cast<uint32_t>(stoi(vTopologyParameters[2])) : 1;
+            const size_t numDevices = simulatedNetworkInterface.getNumNetDevices();
+
+            if (masterIndex >= numDevices) {
+                throw runtime_error ("Master index out of range");
+            }
+
+            // List Devices
+            for (size_t i = 0; i < numDevices; ++i) {
+                cout << i << ") " << simulatedNetworkInterface.getNetDevices()[i]->getMacAddress();
+                if (i == masterIndex) {
+                    cout << " (Master)";
+                }
+                cout << endl;
+            }
 
             vector<thread> threads;
             vector<EthernetSocket> es;
             vector<EthernetDiscovery> ed;
-            const size_t numDevices = simulatedNetworkInterface.getNumNetDevices() - 1;
             es.reserve(numDevices);
             ed.reserve(numDevices);
-            threads.reserve(numDevices);
+            threads.reserve(numDevices - 1);
             for (size_t i = 0; i < numDevices; ++i) {
                 es.emplace_back(interfaceName, simulatedNetworkInterface);
                 ed.emplace_back(es[i]);
-                threads.emplace_back(&EthernetDiscovery::slave, ed[i]);
+                if (i != masterIndex) {
+                    threads.emplace_back(&EthernetDiscovery::slave, ed[i]);
+                }
             }
             if (isPingBased) {
-                edMaster.setPingParameters(pingParameters);
+                ed[masterIndex].setPingParameters(pingParameters);
             }
-            edMaster.master(isPingBased);
+            for (size_t i = 0; i < masterRunCount; ++i) {
+                cout << "Master Run: #" << (i + 1) << endl;
+                ed[masterIndex].master(isPingBased);
+                ed[masterIndex].clear();
+            }
             for (size_t i = 0; i < threads.size(); ++i) {
                 threads[i].join();
             }
