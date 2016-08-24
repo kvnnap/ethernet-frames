@@ -17,6 +17,8 @@
 #include <iostream>
 #include <stdexcept>
 
+#include <chrono>
+#include <thread>
 
 using namespace std;
 using namespace Network;
@@ -111,6 +113,8 @@ void EthernetSocket::send(EthernetFrame &ef, const DataBuffer &data) {
     if (netInterface.sendto(sockfd, sendBuffer.data(), size, 0, (struct sockaddr*)&socket_address, sizeof(socket_address)) < 0) {
         throw runtime_error(string("send: ") + strerror(errno));
     }
+
+    this_thread::sleep_for(chrono::milliseconds(128));
 }
 
 ssize_t EthernetSocket::receive(ISocketListener * iSocketListener, const MacAddress * destination, const MacAddress * source) {
