@@ -352,6 +352,8 @@ void EthernetDiscovery::partitionBottomLayer() {
         connectivitySet.push_back({i});
     }
 
+    return;
+
     for(size_t i = 0; i < connectivitySet.size(); ++i) {
 
         const MacAddress& slaveMacI = slaveMacs[*connectivitySet[i].begin()];
@@ -491,7 +493,7 @@ void EthernetDiscovery::discoverNetwork() {
         // Standard Facts are all constructed in 'facts' and 'sameSwitch'
         map<size_t, set<size_t>> facts;
         vector<set<size_t>> sameSwitch;
-
+        size_t statCount = 0;
         // Start tests and construct conditionals
         {
             // construct set id vector
@@ -512,6 +514,7 @@ void EthernetDiscovery::discoverNetwork() {
                     // All are under a same switch
                     sameSwitch.push_back({comb[0], comb[1], comb[2]});
                 } else {
+                    ++statCount;
                     // Find the one which is not under same switch
                     if (!I) {
                         // I is separate from J/K
@@ -524,6 +527,8 @@ void EthernetDiscovery::discoverNetwork() {
                 }
             }
         }
+
+        cout << "Number of facts before union: " << statCount << endl;
 
         // If we do not have facts, and same switch is available, put all on same switch
         if (facts.empty() && !sameSwitch.empty()) {
@@ -540,6 +545,7 @@ void EthernetDiscovery::discoverNetwork() {
             return;
         }
 
+        // Perform union of LHS elements having the same RHS set
         {
             map<set<size_t>, set<size_t>> invExtendedFacts;
             for (const map<size_t, set<size_t>>::value_type &fact : facts) {
@@ -560,50 +566,29 @@ void EthernetDiscovery::discoverNetwork() {
     // Sort Fact list in ascending order
     sort(factList.begin(), factList.end(),
          [](const ExtFactType* a, const ExtFactType* b) -> bool {
-        return (a->first.size() + a->second.size()) < (b->first.size() + b->second.size());
+        return (a->first.size() + a->second.size()) > (b->first.size() + b->second.size());
     });
 
+    //
+
     // Construct tree
+    // -- Start with a bottom-down approach and therefore, add all nodes to the same root switch
+    {
+        size_t nodeIndex = indexedTopologyTree.getNewNode();
+        for (const set<size_t> &switchSet : connectivitySet) {
+            indexedTopologyTree.addChildToParent(indexedTopologyTree.addNewNode(*switchSet.begin()), nodeIndex);
+        }
+    }
 
-    // Maps to index of node
-    unordered_map<set<size_t>, size_t> nodeMap;
+    // -- For each rule, manipulate the tree and keep it in a valid state
     for (const ExtFactType * fact : factList) {
-        if (nodeMap.find(fact->second) == nodeMap.end()) {
-            // Create node
-            size_t nodeIndex = indexedTopologyTree.getNewNode();
+        // A fact consists of LHS < RHS, where, LHS nodes cannot be in the same
+        // subtree as the RHS nodes
 
-            // Add LHS
-            for (size_t lhsFact : fact->first) {
-                indexedTopologyTree.addChildToParent(indexedTopologyTree.addNewNode(lhsFact), nodeIndex);
+        for (size_t lhsNodeVal : fact->first) {
+            for (size_t rhsNodeVal : fact->second) {
+                indexedTopologyTree.addRule(lhsNodeVal, rhsNodeVal);
             }
-
-            // Add RHS
-            size_t rhsNodeId = indexedTopologyTree.getNewNode();
-            indexedTopologyTree.addChildToParent(rhsNodeId, nodeIndex);
-
-            // Create node for each child
-            for (size_t setId : fact->second) {
-                indexedTopologyTree.addChildToParent(indexedTopologyTree.addNewNode(setId), rhsNodeId);
-            }
-
-            // Add to nodeMap
-            set<size_t> mySet (fact->second);
-            mySet.insert(fact->first.begin(), fact->first.end());
-            nodeMap[mySet] = nodeIndex;
-        } else {
-            // Already exists, link both - this should happen uniquely
-
-            // No new parent should ever be needed now
-            size_t rhsNodeId = nodeMap.at(fact->second);
-            size_t nodeIndex = indexedTopologyTree.getNewNode();
-
-            // Add LHS
-            for (size_t lhsFact : fact->first) {
-                indexedTopologyTree.addChildToParent(indexedTopologyTree.addNewNode(lhsFact), nodeIndex);
-            }
-
-            // Link RHS
-            indexedTopologyTree.addChildToParent(rhsNodeId, nodeIndex);
         }
     }
 
