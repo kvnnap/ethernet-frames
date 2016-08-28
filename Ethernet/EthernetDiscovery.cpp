@@ -483,15 +483,12 @@ bool EthernetDiscovery::testPermutation(const MacAddress &gateway, const MacAddr
 
 void EthernetDiscovery::discoverNetwork() {
 
-    indexedTopologyTree.clear();
-
-    // Extension! Extended Facts - All LHSs having same RHSs can be joined together in union
-    using ExtFactType = map<set<size_t>, set<size_t>>::value_type;
-    map<set<size_t>, set<size_t>> extendedFacts;
+    // Facts of type {A, B, C, D, ..} NOT-IN-SUBTREE-OF {X, Y}
+    vector<pair<set<size_t>, pair<size_t, size_t>>> factList;
 
     {
         // Standard Facts are all constructed in 'facts' and 'sameSwitch'
-        map<size_t, set<size_t>> facts;
+        map<set<size_t>, set<size_t>> facts;
         vector<set<size_t>> sameSwitch;
         size_t statCount = 0;
         // Start tests and construct conditionals
@@ -518,98 +515,58 @@ void EthernetDiscovery::discoverNetwork() {
                     // Find the one which is not under same switch
                     if (!I) {
                         // I is separate from J/K
-                        facts[comb[0]].insert({comb[1], comb[2]});
+                        facts[{comb[1], comb[2]}].insert(comb[0]);
                     } else if (!J) {
-                        facts[comb[1]].insert({comb[0], comb[2]});
+                        facts[{comb[0], comb[2]}].insert(comb[1]);
                     } else if (!K) {
-                        facts[comb[2]].insert({comb[0], comb[1]});
+                        facts[{comb[0], comb[1]}].insert(comb[2]);
                     }
                 }
             }
         }
 
         cout << "Number of facts before union: " << statCount << endl;
-
-        // If we do not have facts, and same switch is available, put all on same switch
-        if (facts.empty() && !sameSwitch.empty()) {
-            set<size_t> unionOfSameSwitch;
-            for (const set<size_t> &sSet : sameSwitch) {
-                unionOfSameSwitch.insert(sSet.begin(), sSet.end());
-            }
-
-            // Construct tree
-            size_t nodeIndex = indexedTopologyTree.getNewNode();
-            for (size_t setId : unionOfSameSwitch) {
-                indexedTopologyTree.addChildToParent(indexedTopologyTree.addNewNode(setId), nodeIndex);
-            }
-            return;
-        }
-
-        // Perform union of LHS elements having the same RHS set
-        {
-            map<set<size_t>, set<size_t>> invExtendedFacts;
-            for (const map<size_t, set<size_t>>::value_type &fact : facts) {
-                invExtendedFacts[fact.second].insert(fact.first);
-            }
-            for (const ExtFactType &invExtFact : invExtendedFacts) {
-                extendedFacts[invExtFact.second] = invExtFact.first;
-            }
+        for (const map<set<size_t>, set<size_t>>::value_type &fact : facts) {
+            factList.push_back({fact.second, {*fact.first.begin(), *++fact.first.begin()}});
         }
     }
 
-    // Add facts as pairs to vector
-    vector<const ExtFactType *> factList;
-    for (const ExtFactType & extFact : extendedFacts) {
-        factList.push_back(&extFact);
-    }
-
-    // Sort Fact list in ascending order
+    // Sort Fact list in descending order
     sort(factList.begin(), factList.end(),
-         [](const ExtFactType* a, const ExtFactType* b) -> bool {
-        return (a->first.size() + a->second.size()) > (b->first.size() + b->second.size());
+         [](const pair<set<size_t>, pair<size_t, size_t>>& a, const pair<set<size_t>, pair<size_t, size_t>>& b) -> bool {
+        return a.first.size() > b.first.size();
     });
-
-    //
 
     // Construct tree
     // -- Start with a bottom-down approach and therefore, add all nodes to the same root switch
-    {
-        size_t nodeIndex = indexedTopologyTree.getNewNode();
-        for (const set<size_t> &switchSet : connectivitySet) {
-            indexedTopologyTree.addChildToParent(indexedTopologyTree.addNewNode(*switchSet.begin()), nodeIndex);
-        }
+    indexedTopologyTree.clear();
+    size_t nodeIndex = indexedTopologyTree.getNewNode();
+    for (const set<size_t> &switchSet : connectivitySet) {
+        indexedTopologyTree.addChildToParent(indexedTopologyTree.addNewNode(*switchSet.begin()), nodeIndex);
     }
 
+
     // -- For each rule, manipulate the tree and keep it in a valid state
-    for (const ExtFactType * fact : factList) {
+    for (const pair<set<size_t>, pair<size_t, size_t>>& fact : factList) {
         // A fact consists of LHS < RHS, where, LHS nodes cannot be in the same
         // subtree as the RHS nodes
-
-        for (size_t lhsNodeVal : fact->first) {
-            for (size_t rhsNodeVal : fact->second) {
-                indexedTopologyTree.addRule(lhsNodeVal, rhsNodeVal);
-            }
+        for (size_t lhsNodeVal : fact.first) {
+            indexedTopologyTree.addRule(lhsNodeVal, fact.second.first);
+            indexedTopologyTree.addRule(lhsNodeVal, fact.second.second);
         }
     }
 
     // Debug info
     cout << "Ordered Extended Facts: " << endl;
-    for (const ExtFactType * fact : factList) {
+    for (const pair<set<size_t>, pair<size_t, size_t>>& fact : factList) {
         cout << "{";
-        for (size_t setId : fact->first) {
+        for (size_t setId : fact.first) {
             cout << setId;
-            if (setId != *--fact->first.end()) {
+            if (setId != *--fact.first.end()) {
                 cout << ", ";
             }
         }
-        cout << "} < {";
-        for (size_t setId : fact->second) {
-            cout << setId;
-            if (setId != *--fact->second.end()) {
-                cout << ", ";
-            }
-        }
-        cout << "}" << endl;
+        cout << "} < {" << fact.second.first << ", " << fact.second.second << "}" << endl;
     }
 }
 
