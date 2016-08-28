@@ -551,8 +551,8 @@ void EthernetDiscovery::discoverNetwork() {
         // A fact consists of LHS < RHS, where, LHS nodes cannot be in the same
         // subtree as the RHS nodes
         for (size_t lhsNodeVal : fact.first) {
-            indexedTopologyTree.addRule(lhsNodeVal, fact.second.first);
-            indexedTopologyTree.addRule(lhsNodeVal, fact.second.second);
+            indexedTopologyTree.addRule(lhsNodeVal, fact.second.first, fact.second.second);
+            //indexedTopologyTree.addRule(lhsNodeVal, fact.second.second);
         }
     }
 

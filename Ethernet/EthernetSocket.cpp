@@ -114,7 +114,7 @@ void EthernetSocket::send(EthernetFrame &ef, const DataBuffer &data) {
         throw runtime_error(string("send: ") + strerror(errno));
     }
 
-    this_thread::sleep_for(chrono::milliseconds(128));
+    //this_thread::sleep_for(chrono::milliseconds(128));
 }
 
 ssize_t EthernetSocket::receive(ISocketListener * iSocketListener, const MacAddress * destination, const MacAddress * source) {

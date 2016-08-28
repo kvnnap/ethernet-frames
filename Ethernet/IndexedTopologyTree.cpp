@@ -122,6 +122,9 @@ void IndexedTopologyTree::recomputeNodeState(size_t nodeIndex) {
     // Recompute violators
     IndexedTopologyNode& node = getNode(nodeIndex);
     node.violators.clear();
+
+    // Gather all children - recursively
+
     for (size_t childIndex : node.children) {
         const IndexedTopologyNode& childNode = getNode(childIndex);
         if (childNode.isLeaf()) {
@@ -147,11 +150,12 @@ void IndexedTopologyTree::moveLeafToNode(size_t childIndex, size_t parentIndex) 
     recomputeNodeState(parentIndex);
 }
 
-void IndexedTopologyTree::addRule(size_t lhsNodeVal, size_t rhsNodeVal) {
+void IndexedTopologyTree::addRule(size_t lhsNodeVal, size_t rhsNodeVal1, size_t rhsNodeVal2) {
     // lhsNode < rhsNode
     // The lhsNode can never be in the same subtree as the rhsNode
 
     // Find lhsNode and check if it lies in the same subtree as the rhsNode
+    findClosestCommonSubtree(rhsNodeVal1, rhsNodeVal2);
     size_t rhsNodeIndex = findNode(rhsNodeVal);
     size_t rhsNodeParentIndex = findParentNodeOf(rhsNodeVal);
 
@@ -212,6 +216,21 @@ bool IndexedTopologyTree::canValBePlaced(size_t valNodeIndex, size_t otherNodeIn
         }
     }
     return true;
+}
+
+size_t IndexedTopologyTree::findClosestCommonSubtree(size_t nodeAIndex, size_t nodeBIndex) const {
+    size_t currNodeA = nodeAIndex;
+    size_t currNodeB = nodeBIndex;
+
+    while (currNodeA != currNodeB && getNode(currNodeA).parentSet) {
+        currNodeA = getNode(currNodeA).parent;
+        currNodeB = nodeBIndex;
+        while (currNodeA != currNodeB && getNode(currNodeB).parentSet) {
+            currNodeB = getNode(currNodeB).parent;
+        }
+    }
+
+    return currNodeA;
 }
 
 ostream& Network::operator<<(ostream &strm, const IndexedTopologyTree &itt) {

@@ -25,7 +25,8 @@ namespace Network {
         std::size_t val;
         bool parentSet;
 
-        std::set<std::size_t> violators;
+        // When in connection with first, violations in second apply
+        std::vector<std::pair<std::size_t, std::set<std::size_t>>> violators;
         //std::set<std::size_t> childVals;
     };
 
@@ -41,12 +42,13 @@ namespace Network {
         void recomputeNodeState(size_t nodeIndex);
         void clear();
         // A lhs val cannot be contained in the closest subtree containing rhsVal
-        void addRule(size_t lhsVal, size_t rhsVal);
+        void addRule(size_t lhsVal, size_t rhsVal1, size_t rhsVal2);
 
         const IndexedTopologyNode& getNode(size_t index) const;
         const std::vector<IndexedTopologyNode>& getNodes() const;
         bool canValBePlaced(size_t valNodeIndex, size_t otherNodeIndex) const;
 
+        size_t findClosestCommonSubtree(size_t nodeAIndex, size_t nodeBIndex) const;
         size_t findNode(size_t val) const;
         size_t findParentNodeOf(size_t val) const;
         bool contains(size_t subtreeIndex, size_t val) const;
