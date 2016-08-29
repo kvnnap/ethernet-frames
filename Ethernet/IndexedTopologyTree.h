@@ -7,6 +7,7 @@
 
 #include <ostream>
 #include <vector>
+#include <map>
 #include <set>
 
 namespace Network {
@@ -26,7 +27,7 @@ namespace Network {
         bool parentSet;
 
         // When in connection with first, violations in second apply
-        std::vector<std::pair<std::size_t, std::set<std::size_t>>> violators;
+        std::set<std::size_t> violators;
         //std::set<std::size_t> childVals;
     };
 
@@ -38,7 +39,7 @@ namespace Network {
         size_t addNewNode(const IndexedTopologyNode& node);
         IndexedTopologyNode& getNode(size_t index);
         void addChildToParent(size_t childIndex, size_t parentIndex);
-        void moveLeafToNode(size_t childIndex, size_t parentIndex);
+        void moveNodeToNode(size_t nodeIndex, size_t parentIndex);
         void recomputeNodeState(size_t nodeIndex);
         void clear();
         // A lhs val cannot be contained in the closest subtree containing rhsVal
@@ -48,13 +49,23 @@ namespace Network {
         const std::vector<IndexedTopologyNode>& getNodes() const;
         bool canValBePlaced(size_t valNodeIndex, size_t otherNodeIndex) const;
 
-        size_t findClosestCommonSubtree(size_t nodeAIndex, size_t nodeBIndex) const;
+        // ATTENTION: This can only be used to when moving a node within the same subtree
+        // I.E siblings or lower
+        bool canNodeBePlaced(size_t valNodeIndex, size_t otherNodeIndex) const;
+
+        // Get which direct child of rootNode contains val
+        size_t getSubtreeContainingVal (size_t rootNodeIndex, size_t val) const;
+        std::set<size_t> getChildrenOf (size_t nodeIndex) const;
+
+        size_t findClosestCommonAncestor(size_t nodeAIndex, size_t nodeBIndex) const;
         size_t findNode(size_t val) const;
         size_t findParentNodeOf(size_t val) const;
         bool contains(size_t subtreeIndex, size_t val) const;
 
     private:
         std::vector<IndexedTopologyNode> nodes;
+        //std::vector<std::pair<size_t, std::set<size_t>>> factList;
+        std::map<std::set<size_t>, std::set<size_t>> factList;
     };
 
     std::ostream& operator<< (std::ostream& strm, const IndexedTopologyTree& indexedTopologyTree);

@@ -484,7 +484,8 @@ bool EthernetDiscovery::testPermutation(const MacAddress &gateway, const MacAddr
 void EthernetDiscovery::discoverNetwork() {
 
     // Facts of type {A, B, C, D, ..} NOT-IN-SUBTREE-OF {X, Y}
-    vector<pair<set<size_t>, pair<size_t, size_t>>> factList;
+    vector<pair<set<size_t>, set<size_t>>> factList;
+    using FactType = vector<pair<set<size_t>, set<size_t>>>::value_type;
 
     {
         // Standard Facts are all constructed in 'facts' and 'sameSwitch'
@@ -527,13 +528,13 @@ void EthernetDiscovery::discoverNetwork() {
 
         cout << "Number of facts before union: " << statCount << endl;
         for (const map<set<size_t>, set<size_t>>::value_type &fact : facts) {
-            factList.push_back({fact.second, {*fact.first.begin(), *++fact.first.begin()}});
+            factList.push_back({fact.second, fact.first});
         }
     }
 
     // Sort Fact list in descending order
     sort(factList.begin(), factList.end(),
-         [](const pair<set<size_t>, pair<size_t, size_t>>& a, const pair<set<size_t>, pair<size_t, size_t>>& b) -> bool {
+         [](const FactType& a, const FactType& b) -> bool {
         return a.first.size() > b.first.size();
     });
 
@@ -547,18 +548,18 @@ void EthernetDiscovery::discoverNetwork() {
 
 
     // -- For each rule, manipulate the tree and keep it in a valid state
-    for (const pair<set<size_t>, pair<size_t, size_t>>& fact : factList) {
+    for (const FactType& fact : factList) {
         // A fact consists of LHS < RHS, where, LHS nodes cannot be in the same
         // subtree as the RHS nodes
         for (size_t lhsNodeVal : fact.first) {
-            indexedTopologyTree.addRule(lhsNodeVal, fact.second.first, fact.second.second);
+            indexedTopologyTree.addRule(lhsNodeVal, *fact.second.begin(), *++fact.second.begin());
             //indexedTopologyTree.addRule(lhsNodeVal, fact.second.second);
         }
     }
 
     // Debug info
     cout << "Ordered Extended Facts: " << endl;
-    for (const pair<set<size_t>, pair<size_t, size_t>>& fact : factList) {
+    for (const FactType& fact : factList) {
         cout << "{";
         for (size_t setId : fact.first) {
             cout << setId;
@@ -566,7 +567,7 @@ void EthernetDiscovery::discoverNetwork() {
                 cout << ", ";
             }
         }
-        cout << "} < {" << fact.second.first << ", " << fact.second.second << "}" << endl;
+        cout << "} < {" << *fact.second.begin() << ", " << *++fact.second.begin() << "}" << endl;
     }
 }
 

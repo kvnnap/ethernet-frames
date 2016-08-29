@@ -123,80 +123,111 @@ void IndexedTopologyTree::recomputeNodeState(size_t nodeIndex) {
     IndexedTopologyNode& node = getNode(nodeIndex);
     node.violators.clear();
 
-    // Gather all children - recursively
-
+    // Gather all children
+    vector<set<size_t>> childSets;
     for (size_t childIndex : node.children) {
-        const IndexedTopologyNode& childNode = getNode(childIndex);
-        if (childNode.isLeaf()) {
-            node.violators.insert(childNode.violators.begin(), childNode.violators.end());
+        childSets.push_back(getChildrenOf(childIndex));
+    }
+
+    // loop and add to violators
+    for (size_t s = 0; s < childSets.size(); ++s) {
+        for (size_t sChild : childSets[s]) {
+            for (size_t s2 = s; s2 < childSets.size(); ++s2) {
+                for (size_t sChild2 : childSets[s2]) {
+                    // Add violators here
+                    map<set<size_t>, set<size_t>>::const_iterator itemIterator = factList.find({sChild, sChild2});
+                    if (itemIterator != factList.end()) {
+                        node.violators.insert(itemIterator->second.begin(), itemIterator->second.end());
+                    }
+                }
+            }
         }
     }
 }
 
-void IndexedTopologyTree::moveLeafToNode(size_t childIndex, size_t parentIndex) {
-    IndexedTopologyNode& childLeaf = getNode(childIndex);
+void IndexedTopologyTree::moveNodeToNode(size_t nodeIndex, size_t parentIndex) {
+    IndexedTopologyNode& node = getNode(nodeIndex);
 
     // Delete leaf from current parent and restore state, if any
-    if (!childLeaf.isRoot()) {
-        IndexedTopologyNode &currentParent = getNode(childLeaf.parent);
-        currentParent.deleteChild(childIndex);
-        recomputeNodeState(childLeaf.parent);
+    if (!node.isRoot()) {
+        IndexedTopologyNode &currentParent = getNode(node.parent);
+        currentParent.deleteChild(nodeIndex);
+        recomputeNodeState(node.parent);
     }
 
     // Add
     IndexedTopologyNode& parentNode = getNode(parentIndex);
-    parentNode.children.push_back(childIndex);
-    childLeaf.setParent(parentIndex);
+    parentNode.children.push_back(nodeIndex);
+    node.setParent(parentIndex);
     recomputeNodeState(parentIndex);
 }
 
 void IndexedTopologyTree::addRule(size_t lhsNodeVal, size_t rhsNodeVal1, size_t rhsNodeVal2) {
     // lhsNode < rhsNode
-    // The lhsNode can never be in the same subtree as the rhsNode
 
-    // Find lhsNode and check if it lies in the same subtree as the rhsNode
-    findClosestCommonSubtree(rhsNodeVal1, rhsNodeVal2);
-    size_t rhsNodeIndex = findNode(rhsNodeVal);
-    size_t rhsNodeParentIndex = findParentNodeOf(rhsNodeVal);
+    // Push fact so that we can compute validity later
+    factList[{rhsNodeVal1, rhsNodeVal2}].insert(lhsNodeVal);
+
+    // Find the closest common ancestor of rhsNodeVal1 and rhsNodeVal2
+    size_t rhsNodeIndex = findClosestCommonAncestor(findNode(rhsNodeVal1), findNode(rhsNodeVal2));
 
     // Add facts to node
     getNode(rhsNodeIndex).violators.insert(lhsNodeVal);
 
-    // Optimisation
-    getNode(rhsNodeParentIndex).violators.insert(lhsNodeVal);
-
     // -- Does LHS lie in RHS subtree?
-    if (contains(rhsNodeParentIndex, lhsNodeVal)) {
+    if (contains(rhsNodeIndex, lhsNodeVal)) {
         // Violation - LHS lies in RHS subtree and LHS NOT< RHS- Tree transformation needed
 
-        // New method -
-        // Check children nodes of rhs Parent
-        bool moved = false;
-        IndexedTopologyNode& rhsNodeParent = getNode(rhsNodeParentIndex);
-        for (size_t childIndex : rhsNodeParent.children) {
-            IndexedTopologyNode& child = getNode(childIndex);
-            if (!child.isLeaf()) {
-                // check if we can transfer rhsNode here
-                if (canValBePlaced(rhsNodeIndex, childIndex)) {
-                    moveLeafToNode(rhsNodeIndex, childIndex);
-                    moved = true;
-                    break;
+        // Get relevant subtree indices
+        size_t lhsSubtreeIndex = getSubtreeContainingVal(rhsNodeIndex, lhsNodeVal);
+        size_t rhsNodeVal1SubtreeIndex = getSubtreeContainingVal(rhsNodeIndex, rhsNodeVal1);
+        size_t rhsNodeVal2SubtreeIndex = getSubtreeContainingVal(rhsNodeIndex, rhsNodeVal2);
+
+        // Join rhsNodeVal1 and rhsNodeVal2 subtrees together, this step is always required
+
+        if (canNodeBePlaced(rhsNodeVal1SubtreeIndex, rhsNodeVal2SubtreeIndex)) {
+            // Case 1 - Join rhsNodeVal1SubtreeIndex to rhsNodeVal2SubtreeIndex
+            moveNodeToNode(rhsNodeVal1SubtreeIndex, rhsNodeVal2SubtreeIndex);
+        } else {
+            if (canNodeBePlaced(rhsNodeVal2SubtreeIndex, rhsNodeVal1SubtreeIndex)) {
+                // Case 2 - Join rhsNodeVal2SubtreeIndex to rhsNodeVal1SubtreeIndex
+                moveNodeToNode(rhsNodeVal2SubtreeIndex, rhsNodeVal1SubtreeIndex);
+            } else {
+                // Case 3 - Join rhsNodeVal1SubtreeIndex and rhsNodeVal2SubtreeIndex to sibling nodes
+                IndexedTopologyNode rhsNode = getNode(rhsNodeIndex);
+
+                bool moved = false;
+                for (size_t siblingIndex : rhsNode.children) {
+                    if (siblingIndex != rhsNodeVal1SubtreeIndex &&
+                        siblingIndex != rhsNodeVal2SubtreeIndex &&
+                        siblingIndex != lhsSubtreeIndex &&
+                        canNodeBePlaced(rhsNodeVal1SubtreeIndex, siblingIndex) &&
+                        canNodeBePlaced(rhsNodeVal2SubtreeIndex, siblingIndex))
+                    {
+                        moveNodeToNode(rhsNodeVal1SubtreeIndex, siblingIndex);
+                        moveNodeToNode(rhsNodeVal2SubtreeIndex, siblingIndex);
+                        moved = true;
+                        break;
+                    }
+                }
+
+                // Case 4 - Join rhsNodeVal1SubtreeIndex and rhsNodeVal2SubtreeIndex to new Node
+                if (!moved) {
+                    size_t newNodeIndex = getNewNode();
+                    moveNodeToNode(rhsNodeVal1SubtreeIndex, newNodeIndex);
+                    moveNodeToNode(rhsNodeVal2SubtreeIndex, newNodeIndex);
+                    moveNodeToNode(newNodeIndex, rhsNodeIndex);
                 }
             }
         }
 
-        if (!moved) {
-            // Encapsulate rhsNode into a new node and move it there
-            // Add new child to rhsNodeParent node
-            size_t newNodeIndex = getNewNode();
-            addChildToParent(newNodeIndex, rhsNodeParentIndex);
-            moveLeafToNode(rhsNodeIndex, newNodeIndex);
-        }
+        // As a result, lhsNodeVal is now allowed in the rhsNode tree. However, one last case remains
 
-        // need to move lhs node out of rhs node subtree and place it either in:
-        // 1) Grand parent of RHS node
-        // 2) (other children of Grand parent) Uncle of RHS node
-        // 3) Move up one level (grand grand..) and try there
+        // Check whether LHS Value lies in child subtrees containing rhsNodeVal1 or rhsNodeVal2
+        if (lhsSubtreeIndex == rhsNodeVal1SubtreeIndex || lhsSubtreeIndex == rhsNodeVal2SubtreeIndex) {
+            // LHS Value lies in one of RHS Val 1/2 subtrees, this additional operation is needed
+            throw runtime_error("This special case was not implemented");
+        }
 
     }
 
@@ -218,7 +249,7 @@ bool IndexedTopologyTree::canValBePlaced(size_t valNodeIndex, size_t otherNodeIn
     return true;
 }
 
-size_t IndexedTopologyTree::findClosestCommonSubtree(size_t nodeAIndex, size_t nodeBIndex) const {
+size_t IndexedTopologyTree::findClosestCommonAncestor(size_t nodeAIndex, size_t nodeBIndex) const {
     size_t currNodeA = nodeAIndex;
     size_t currNodeB = nodeBIndex;
 
@@ -231,6 +262,51 @@ size_t IndexedTopologyTree::findClosestCommonSubtree(size_t nodeAIndex, size_t n
     }
 
     return currNodeA;
+}
+
+size_t IndexedTopologyTree::getSubtreeContainingVal(size_t rootNodeIndex, size_t val) const {
+    size_t valNodeIndex = findNode(val);
+    size_t subtreeNodeIndex = valNodeIndex;
+
+    while (getNode(subtreeNodeIndex).parentSet && getNode(subtreeNodeIndex).parent != rootNodeIndex) {
+        subtreeNodeIndex = getNode(subtreeNodeIndex).parent;
+    }
+
+    if (!getNode(subtreeNodeIndex).parentSet) {
+        throw runtime_error("Val is not contained in this subtree");
+    }
+
+    return subtreeNodeIndex;
+}
+
+std::set<size_t> IndexedTopologyTree::getChildrenOf(size_t nodeIndex) const {
+    // TODO: Extremely Inefficient - Fix later
+    set<size_t> vals;
+    for (size_t i = 0; i < nodes.size(); ++i) {
+        if (nodes[i].isLeaf() && contains(nodeIndex, nodes[i].val)) {
+            vals.insert(nodes[i].val);
+        }
+    }
+    return vals;
+}
+
+// ATTENTION: This can only be used to when moving a node within the same subtree
+// I.E siblings or lower - This is so that fewer checks are made
+bool IndexedTopologyTree::canNodeBePlaced(size_t thisNodeIndex, size_t otherNodeIndex) const {
+    const IndexedTopologyNode otherNode = getNode(otherNodeIndex);
+    if (thisNodeIndex == otherNodeIndex) {
+        return false;
+    }
+    if (otherNode.isLeaf() || thisNodeIndex == otherNodeIndex) {
+        return false;
+    }
+    set<size_t> thisNodeChildren = getChildrenOf(thisNodeIndex);
+    vector<size_t> violations (thisNodeChildren.size());
+    violations.resize(set_intersection(thisNodeChildren.begin(), thisNodeChildren.end(),
+                                       otherNode.violators.begin(), otherNode.violators.end(),
+                                   violations.begin())
+                  - violations.begin());
+    return violations.size() == 0;
 }
 
 ostream& Network::operator<<(ostream &strm, const IndexedTopologyTree &itt) {

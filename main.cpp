@@ -166,7 +166,11 @@ int main(int argc, char *argv[])
             }
             for (size_t i = 0; i < masterRunCount; ++i) {
                 cout << "Master Run: #" << (i + 1) << endl;
-                ed[masterIndex].master(isPingBased);
+                try {
+                    ed[masterIndex].master(isPingBased);
+                } catch (const exception& ex) {
+                    cout << "Virtual Master Catch Block: " << ex.what() << endl;
+                }
                 ed[masterIndex].clear();
             }
             for (size_t i = 0; i < threads.size(); ++i) {
