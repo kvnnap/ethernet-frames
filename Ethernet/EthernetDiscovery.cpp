@@ -339,8 +339,8 @@ void EthernetDiscovery::getAllDevices() {
     sort(slaveMacs.begin(), slaveMacs.end(),
      [](const MacAddress& a, const MacAddress& b) -> bool {
          for (size_t i = 0; i < a.getMacArray().size(); ++i) {
-             if (a.getMacArray().at(i) < b.getMacArray().at(i)) {
-                 return true;
+             if (a.getMacArray().at(i) != b.getMacArray().at(i)) {
+                 return a.getMacArray().at(i) < b.getMacArray().at(i);
              }
          }
          return false;
