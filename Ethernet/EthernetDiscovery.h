@@ -51,6 +51,7 @@ namespace  Network {
         EthernetDiscovery(EthernetSocket& ethernetSocket);
 
         void setPingParameters(const PingParameters& p_pingParameters);
+        void setGroupedSwitches(bool p_groupSwitches);
         void master(bool isPingBased);
         void slave();
         void clear();
@@ -90,16 +91,10 @@ namespace  Network {
         float pingTime;
         PingParameters pingParameters;
 
+        // Grouping
+        bool groupSwitches;
     };
 
-}
-
-namespace std {
-    template <>
-    struct hash<std::set<size_t>>
-    {
-        std::size_t operator()(const std::set<size_t>& k) const;
-    };
 }
 
 #endif //NETWORK_DISCOVERY_ETHERNETDISCOVERY_H

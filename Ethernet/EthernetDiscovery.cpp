@@ -19,7 +19,11 @@ using namespace Mathematics;
 using namespace std;
 
 EthernetDiscovery::EthernetDiscovery(EthernetSocket &ethernetSocket)
-        : ethernetSocket ( ethernetSocket ), lastMessage (EMPTY), testReceived ( false ), pingTime ( 0.f )
+        : ethernetSocket ( ethernetSocket ),
+          lastMessage (EMPTY),
+          testReceived ( false ),
+          pingTime ( 0.f ),
+          groupSwitches (false)
 { }
 
 
@@ -30,6 +34,7 @@ void EthernetDiscovery::clear() {
     lastMessage = EMPTY;
     testReceived = false;
     pingTime = 0.f;
+    groupSwitches = false;
 }
 
 // returning false breaks the dataArrival infinite loop
@@ -352,7 +357,9 @@ void EthernetDiscovery::partitionBottomLayer() {
         connectivitySet.push_back({i});
     }
 
-    return;
+    if (!groupSwitches) {
+        return;
+    }
 
     for(size_t i = 0; i < connectivitySet.size(); ++i) {
 
@@ -532,20 +539,19 @@ void EthernetDiscovery::discoverNetwork() {
         }
     }
 
-    // Sort Fact list in descending order
+    // Sort Fact list in ascending order
     sort(factList.begin(), factList.end(),
          [](const FactType& a, const FactType& b) -> bool {
-        return a.first.size() > b.first.size();
+        return a.first.size() < b.first.size();
     });
 
     // Construct tree
     // -- Start with a bottom-down approach and therefore, add all nodes to the same root switch
     indexedTopologyTree.clear();
     size_t nodeIndex = indexedTopologyTree.getNewNode();
-    for (const set<size_t> &switchSet : connectivitySet) {
-        indexedTopologyTree.addChildToParent(indexedTopologyTree.addNewNode(*switchSet.begin()), nodeIndex);
+    for (size_t i = 0; i < connectivitySet.size(); ++i) {
+        indexedTopologyTree.addChildToParent(indexedTopologyTree.addNewNode(i), nodeIndex);
     }
-
 
     // -- For each rule, manipulate the tree and keep it in a valid state
     for (const FactType& fact : factList) {
@@ -936,11 +942,6 @@ void EthernetDiscovery::setPingParameters(const EthernetDiscovery::PingParameter
     pingParameters = p_pingParameters;
 }
 
-size_t std::hash<set<size_t>>::operator()(const std::set<size_t> &k) const {
-    size_t ret = 0;
-    size_t i = 0;
-    for (size_t n : k) {
-        ret += ++i * n;
-    }
-    return ret;
+void EthernetDiscovery::setGroupedSwitches(bool p_groupSwitches) {
+    groupSwitches = p_groupSwitches;
 }

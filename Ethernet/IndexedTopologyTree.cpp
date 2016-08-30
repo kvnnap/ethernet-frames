@@ -294,9 +294,6 @@ std::set<size_t> IndexedTopologyTree::getChildrenOf(size_t nodeIndex) const {
 // I.E siblings or lower - This is so that fewer checks are made
 bool IndexedTopologyTree::canNodeBePlaced(size_t thisNodeIndex, size_t otherNodeIndex) const {
     const IndexedTopologyNode otherNode = getNode(otherNodeIndex);
-    if (thisNodeIndex == otherNodeIndex) {
-        return false;
-    }
     if (otherNode.isLeaf() || thisNodeIndex == otherNodeIndex) {
         return false;
     }

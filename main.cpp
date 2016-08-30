@@ -43,17 +43,19 @@ int main(int argc, char *argv[])
     bool isSender = true;
     bool isPingBased = false;
     bool isVirtual = false;
+    bool isGrouped = false;
     bool help = false;
 
     // name, hasArg, flag, val
     option options[] = {
             {"interface", required_argument, nullptr, 'i'},
-            {"sender",  no_argument, nullptr, 's'},
-            {"ping",  optional_argument, nullptr, 'p'},
-            {"receiver",  no_argument, nullptr, 'r'},
-            {"virtual",  required_argument, nullptr, 'v'},
-            {"help",   no_argument,       nullptr, 'h'},
-            {nullptr, 0,                  nullptr, 0} // Last entry must be all zeros
+            {"sender",    no_argument,       nullptr, 's'},
+            {"ping",      optional_argument, nullptr, 'p'},
+            {"receiver",  no_argument,       nullptr, 'r'},
+            {"virtual",   required_argument, nullptr, 'v'},
+            {"grouped",   no_argument,       nullptr, 'g'},
+            {"help",      no_argument,       nullptr, 'h'},
+            {nullptr,     0,                 nullptr,  0 } // Last entry must be all zeros
     };
 
     int c;
@@ -76,6 +78,9 @@ int main(int argc, char *argv[])
             case 'v':
                 isVirtual = true;
                 virtualTopologyParameters = optarg;
+                break;
+            case 'g':
+                isGrouped = true;
                 break;
             case 'h':
                 help = true;
@@ -100,6 +105,7 @@ int main(int argc, char *argv[])
         << "\t--ping=[stdConf,confInterval,noise,interThresholdCoefficient,minPings,maxPings] - Uses the ping-hopcount algorithm for discovery, default: " << strPingParameters << endl
         << "\t--receiver - Sets as receiver" << endl
         << "\t--virtual=[netTopology.xml,masterIndex,masterRunCount] - Simulate master and receivers using a virtual network topology" << endl
+        << "\t--grouped - Group leaf nodes on the same switch first before performing Algorithm 3/4 (incomplete graph resolution for this)" << endl
         << "\t--help - Shows this Usage Information" << endl;
         return EXIT_SUCCESS;
     }
@@ -163,6 +169,8 @@ int main(int argc, char *argv[])
             }
             if (isPingBased) {
                 ed[masterIndex].setPingParameters(pingParameters);
+            } else {
+                ed[masterIndex].setGroupedSwitches(isGrouped);
             }
             for (size_t i = 0; i < masterRunCount; ++i) {
                 cout << "Master Run: #" << (i + 1) << endl;
@@ -184,6 +192,8 @@ int main(int argc, char *argv[])
             if (isSender) {
                 if (isPingBased) {
                     ed.setPingParameters(pingParameters);
+                } else {
+                    ed.setGroupedSwitches(isGrouped);
                 }
                 ed.master(isPingBased);
             } else {
