@@ -334,6 +334,17 @@ void EthernetDiscovery::getAllDevices() {
     ethernetSocket.setReceiveTimeout(500);
     ethernetSocket.receive(this, &ethernetSocket.getInterfaceMac());
     ethernetSocket.setReceiveTimeout(0);
+
+    // Sort macs in ascending order - only for visual analysis purposes
+    sort(slaveMacs.begin(), slaveMacs.end(),
+     [](const MacAddress& a, const MacAddress& b) -> bool {
+         for (size_t i = 0; i < a.getMacArray().size(); ++i) {
+             if (a.getMacArray().at(i) < b.getMacArray().at(i)) {
+                 return true;
+             }
+         }
+         return false;
+     });
 }
 
 void EthernetDiscovery::partitionBottomLayer() {
