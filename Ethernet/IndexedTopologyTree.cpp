@@ -35,16 +35,24 @@ void IndexedTopologyNode::deleteChild(size_t childIndex) {
 ostream& Network::operator<<(ostream &strm, const IndexedTopologyNode &itn) {
     strm << "IndexedTopologyNode:" << endl
          << "\tisLeaf: " << (itn.isLeaf() ? "Yes" : "No" ) << endl;
-         if (itn.parentSet) {
-             strm << "\tparent: " << itn.parent << endl;
-         } else {
-             strm << "\tparent: N/A (Is Root)" << endl;
-         }
-         strm << "\tval: " << itn.val << endl
-         << "\tchildren: {";
+     if (itn.parentSet) {
+         strm << "\tparent: " << itn.parent << endl;
+     } else {
+         strm << "\tparent: N/A (Is Root)" << endl;
+     }
+     strm << "\tval: " << itn.val << endl
+          << "\tchildren: {";
     for (size_t setId : itn.children) {
         strm << setId;
         if (setId != *--itn.children.end()) {
+            strm << ", ";
+        }
+    }
+    strm << "}" << endl
+         << "\tviolators: {";
+    for (size_t violator : itn.violators) {
+        strm << violator;
+        if (violator != *--itn.violators.end()) {
             strm << ", ";
         }
     }
@@ -132,7 +140,7 @@ void IndexedTopologyTree::recomputeNodeState(size_t nodeIndex) {
     // loop and add to violators
     for (size_t s = 0; s < childSets.size(); ++s) {
         for (size_t sChild : childSets[s]) {
-            for (size_t s2 = s; s2 < childSets.size(); ++s2) {
+            for (size_t s2 = s + 1; s2 < childSets.size(); ++s2) {
                 for (size_t sChild2 : childSets[s2]) {
                     // Add violators here
                     map<set<size_t>, set<size_t>>::const_iterator itemIterator = factList.find({sChild, sChild2});
