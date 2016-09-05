@@ -505,31 +505,34 @@ void EthernetDiscovery::discoverNetwork() {
     vector<pair<set<size_t>, set<size_t>>> factList;
     using FactType = vector<pair<set<size_t>, set<size_t>>>::value_type;
 
+    // Select two slaves from each switch detected when possible
+    vector<size_t> slavesToTest;
+    for (const set<size_t>& bottomSwitch : connectivitySet) {
+        slavesToTest.push_back(*bottomSwitch.begin());
+        if (bottomSwitch.size() >= 2) {
+            slavesToTest.push_back(*++bottomSwitch.begin());
+        }
+    }
+
     {
         // Standard Facts are all constructed in 'facts' and 'sameSwitch'
         map<set<size_t>, set<size_t>> facts;
-        vector<set<size_t>> sameSwitch;
         size_t statCount = 0;
         // Start tests and construct conditionals
         {
             // construct set id vector
-            vector<size_t> setIds (connectivitySet.size());
-            iota(setIds.begin(), setIds.end(), 0);
-            vector<vector<size_t>> combs = combinations(setIds, 3);
+            vector<vector<size_t>> combs = combinations(slavesToTest, 3);
 
             for (vector<size_t> &comb : combs) {
-                const MacAddress &i = slaveMacs[*connectivitySet[comb[0]].begin()];
-                const MacAddress &j = slaveMacs[*connectivitySet[comb[1]].begin()];
-                const MacAddress &k = slaveMacs[*connectivitySet[comb[2]].begin()];
+                const MacAddress &i = slaveMacs[comb[0]];
+                const MacAddress &j = slaveMacs[comb[1]];
+                const MacAddress &k = slaveMacs[comb[2]];
                 // Test these three
                 bool I = true, J = true, K = true;
                 bool isSameSwitch = (K = testPermutation(ethernetSocket.getInterfaceMac(), i, j, k)) &&
                                     (J = testPermutation(ethernetSocket.getInterfaceMac(), i, k, j)) &&
                                     (I = testPermutation(ethernetSocket.getInterfaceMac(), j, k, i));
-                if (isSameSwitch) {
-                    // All are under a same switch
-                    sameSwitch.push_back({comb[0], comb[1], comb[2]});
-                } else {
+                if (!isSameSwitch) {
                     ++statCount;
                     // Find the one which is not under same switch
                     if (!I) {
@@ -560,8 +563,8 @@ void EthernetDiscovery::discoverNetwork() {
     // -- Start with a bottom-down approach and therefore, add all nodes to the same root switch
     indexedTopologyTree.clear();
     size_t nodeIndex = indexedTopologyTree.getNewNode();
-    for (size_t i = 0; i < connectivitySet.size(); ++i) {
-        indexedTopologyTree.addChildToParent(indexedTopologyTree.addNewNode(i), nodeIndex);
+    for (size_t slaveId : slavesToTest) {
+        indexedTopologyTree.addChildToParent(indexedTopologyTree.addNewNode(slaveId), nodeIndex);
     }
 
     // -- For each rule, manipulate the tree and keep it in a valid state
@@ -570,12 +573,55 @@ void EthernetDiscovery::discoverNetwork() {
         // subtree as the RHS nodes
         for (size_t lhsNodeVal : fact.first) {
             indexedTopologyTree.addRule(lhsNodeVal, *fact.second.begin(), *++fact.second.begin());
-            //indexedTopologyTree.addRule(lhsNodeVal, fact.second.second);
+        }
+    }
+
+    // Attach remaining nodes to known switches and isolate bottom-layer single-node switches
+    for (const set<size_t>& bottomSwitch : connectivitySet) {
+
+        if (bottomSwitch.size() >= 2) {
+            size_t parentIndex = indexedTopologyTree.findParentNodeOf(*bottomSwitch.begin());
+            // Sanity Check
+            if (parentIndex != indexedTopologyTree.findParentNodeOf(*++bottomSwitch.begin())) {
+                throw runtime_error("Two nodes supposed to be on the same switch are on different switches");
+            }
+            if (bottomSwitch.size() >= 3) {
+                for (set<size_t>::const_iterator slaveIterator = next(bottomSwitch.begin(), 2);
+                     slaveIterator != bottomSwitch.end(); ++slaveIterator) {
+                    indexedTopologyTree.addChildToParent(indexedTopologyTree.addNewNode(*slaveIterator), parentIndex);
+                }
+            }
+        } else if (groupSwitches) {
+            // Single switch node
+            const size_t childIndex = indexedTopologyTree.findNode(*bottomSwitch.begin());
+            const size_t parentIndex = indexedTopologyTree.getNode(childIndex).parent;
+
+            // Check whether there is another leaf before isolating
+            bool needToIsolate = false;
+            for (size_t pcIndex : indexedTopologyTree.getNode(parentIndex).children) {
+                if (pcIndex != childIndex && indexedTopologyTree.getNode(pcIndex).isLeaf()) {
+                    needToIsolate = true;
+                    break;
+                }
+            }
+
+            if (needToIsolate) {
+                const size_t newSwitch = indexedTopologyTree.getNewNode();
+
+                // Move without recomputing violation sets - no need at this stage
+                // Additionally, it will change nothing since these are new elements
+                indexedTopologyTree.getNode(parentIndex).deleteChild(childIndex);
+                indexedTopologyTree.addChildToParent(childIndex, newSwitch);
+                indexedTopologyTree.addChildToParent(newSwitch, parentIndex);
+
+                //indexedTopologyTree.moveNodeToNode(newSwitch, parentIndex);
+                //indexedTopologyTree.moveNodeToNode(childIndex, newSwitch);
+            }
         }
     }
 
     // Debug info
-    cout << "Ordered Extended Facts: " << endl;
+    cout << "Ordered Facts: " << endl;
     for (const FactType& fact : factList) {
         cout << "{";
         for (size_t setId : fact.first) {
