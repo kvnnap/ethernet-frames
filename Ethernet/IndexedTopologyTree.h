@@ -59,6 +59,7 @@ namespace Network {
 
         size_t findClosestCommonAncestor(size_t nodeAIndex, size_t nodeBIndex) const;
         size_t findNode(size_t val) const;
+        bool nodeExists(size_t val) const;
         size_t findParentNodeOf(size_t val) const;
         bool contains(size_t subtreeIndex, size_t val) const;
 

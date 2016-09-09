@@ -12,6 +12,7 @@
 #include <chrono>
 #include "EthernetDiscovery.h"
 #include "Mathematics/Statistics.h"
+#include "Mathematics/SetOperations.h"
 #include "DataEncoder.h"
 
 using namespace Network;
@@ -559,7 +560,46 @@ void EthernetDiscovery::discoverNetwork() {
         return a.first.size() < b.first.size();
     });
 
-    // Construct tree
+    // Derive Distinct Violations - Set automatically sorts, but by set size? not sure
+    // If this generates problems, use vector and sort it manually
+    set<set<size_t>> distinctViolations /*{{}}*/;
+    for (const FactType& fact : factList) {
+        distinctViolations.insert(fact.first);
+    }
+
+    // Construct tree by adding all switches first
+    indexedTopologyTree.clear();
+    indexedTopologyTree.getNewNode(); // Add root, it's always there
+    const vector<IndexedTopologyNode>& nodeList = indexedTopologyTree.getNodes();
+    for (const set<size_t>& violationList : distinctViolations) {
+        // Find node with largest violation list that is a subset of this violation list
+        for (ssize_t nodeIndex = nodeList.size() - 1; nodeIndex >= 0; --nodeIndex) {
+            const IndexedTopologyNode& node = nodeList[nodeIndex];
+            if (Mathematics::SetOperations::setSubsetOf(node.violators, violationList)) {
+                // Sets intersect, this means that node.violators isSubsetOf violationList - Pair them together
+                size_t switchIndex = indexedTopologyTree.getNewNode();
+                indexedTopologyTree.getNode(switchIndex).violators = violationList;
+                indexedTopologyTree.addChildToParent(switchIndex, nodeIndex);
+                break;
+            }
+        }
+    }
+
+    // Add all the leaf nodes starting from the most restrictive switches
+    for (ssize_t nodeIndex = nodeList.size() - 1; nodeIndex >= 0; --nodeIndex) {
+        const IndexedTopologyNode& node = nodeList[nodeIndex];
+        vector<size_t> childrenToAdd;
+        // Compute difference
+        set_difference(slavesToTest.begin(), slavesToTest.end(), node.violators.begin(), node.violators.end(), back_inserter(childrenToAdd));
+        for (size_t childToAdd : childrenToAdd) {
+            // Check that only new children are being added
+            if (!indexedTopologyTree.nodeExists(childToAdd)) {
+                indexedTopologyTree.addChildToParent(indexedTopologyTree.addNewNode(childToAdd), nodeIndex);
+            }
+        }
+    }
+
+    /*// Construct tree
     // -- Start with a bottom-down approach and therefore, add all nodes to the same root switch
     indexedTopologyTree.clear();
     size_t nodeIndex = indexedTopologyTree.getNewNode();
@@ -574,7 +614,7 @@ void EthernetDiscovery::discoverNetwork() {
         for (size_t lhsNodeVal : fact.first) {
             indexedTopologyTree.addRule(lhsNodeVal, *fact.second.begin(), *++fact.second.begin());
         }
-    }
+    }*/
 
     // Attach remaining nodes to known switches and isolate bottom-layer single-node switches
     for (const set<size_t>& bottomSwitch : connectivitySet) {

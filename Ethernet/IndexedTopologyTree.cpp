@@ -5,6 +5,7 @@
 #include <stdexcept>
 #include <algorithm>
 #include "IndexedTopologyTree.h"
+#include "Mathematics/SetOperations.h"
 
 using namespace std;
 using namespace Network;
@@ -89,6 +90,17 @@ const std::vector<IndexedTopologyNode>& IndexedTopologyTree::getNodes() const {
 
 void IndexedTopologyTree::clear() {
     nodes.clear();
+}
+
+
+bool IndexedTopologyTree::nodeExists(size_t val) const {
+    for (size_t index = 0; index < nodes.size(); ++index) {
+        const IndexedTopologyNode& node = getNode(index);
+        if (node.isLeaf() && node.val == val) {
+            return true;
+        }
+    }
+    return false;
 }
 
 size_t IndexedTopologyTree::findNode(size_t val) const {
@@ -306,12 +318,7 @@ bool IndexedTopologyTree::canNodeBePlaced(size_t thisNodeIndex, size_t otherNode
         return false;
     }
     set<size_t> thisNodeChildren = getChildrenOf(thisNodeIndex);
-    vector<size_t> violations (thisNodeChildren.size());
-    violations.resize(set_intersection(thisNodeChildren.begin(), thisNodeChildren.end(),
-                                       otherNode.violators.begin(), otherNode.violators.end(),
-                                   violations.begin())
-                  - violations.begin());
-    return violations.size() == 0;
+    return Mathematics::SetOperations::setsDisjoint(getChildrenOf(thisNodeIndex), otherNode.violators);
 }
 
 ostream& Network::operator<<(ostream &strm, const IndexedTopologyTree &itt) {
