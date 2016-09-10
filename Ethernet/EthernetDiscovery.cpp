@@ -554,18 +554,12 @@ void EthernetDiscovery::discoverNetwork() {
         }
     }
 
-    // Sort Fact list in ascending order
-    sort(factList.begin(), factList.end(),
-         [](const FactType& a, const FactType& b) -> bool {
-        return a.first.size() < b.first.size();
-    });
-
-    // Derive Distinct Violations - Set automatically sorts, but by set size? no it's lexicographic
-    // Use custom ordering function
+    // Derive Distinct Violations
     set<set<size_t>> distinctViolationsSet /*{{}}*/;
     for (const FactType& fact : factList) {
         distinctViolationsSet.insert(fact.first);
     }
+    // Sort by set size
     vector<set<size_t>> distinctViolations (distinctViolationsSet.begin(), distinctViolationsSet.end());
     sort(distinctViolations.begin(), distinctViolations.end(),
          [](const set<size_t>& a, const set<size_t>& b) -> bool {
@@ -574,7 +568,7 @@ void EthernetDiscovery::discoverNetwork() {
 
     // Construct tree by adding all switches first
     indexedTopologyTree.clear();
-    indexedTopologyTree.getNewNode(); // Add root, it's always there
+    /*size_t rootIndex = */indexedTopologyTree.getNewNode(); // Add root, it's always there
     const vector<IndexedTopologyNode>& nodeList = indexedTopologyTree.getNodes();
     for (const set<size_t>& violationList : distinctViolations) {
         // Find node with largest violation list that is a subset of this violation list
@@ -604,7 +598,12 @@ void EthernetDiscovery::discoverNetwork() {
         }
     }
 
-    /*// Construct tree
+    /*// Sort Fact list in ascending order
+    sort(factList.begin(), factList.end(),
+         [](const FactType& a, const FactType& b) -> bool {
+             return a.first.size() < b.first.size();
+         });
+    // Construct tree
     // -- Start with a bottom-down approach and therefore, add all nodes to the same root switch
     indexedTopologyTree.clear();
     size_t nodeIndex = indexedTopologyTree.getNewNode();
