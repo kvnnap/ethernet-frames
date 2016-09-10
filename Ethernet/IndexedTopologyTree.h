@@ -14,7 +14,7 @@ namespace Network {
 
     class IndexedTopologyNode {
     public:
-        IndexedTopologyNode(size_t p_val = 0);
+        IndexedTopologyNode(size_t p_val = static_cast<size_t>(-1));
 
         bool isLeaf() const;
         bool isRoot() const;
@@ -47,7 +47,6 @@ namespace Network {
 
         const IndexedTopologyNode& getNode(size_t index) const;
         const std::vector<IndexedTopologyNode>& getNodes() const;
-        bool canValBePlaced(size_t valNodeIndex, size_t otherNodeIndex) const;
 
         // ATTENTION: This can only be used to when moving a node within the same subtree
         // I.E siblings or lower

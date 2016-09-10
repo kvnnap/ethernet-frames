@@ -560,12 +560,17 @@ void EthernetDiscovery::discoverNetwork() {
         return a.first.size() < b.first.size();
     });
 
-    // Derive Distinct Violations - Set automatically sorts, but by set size? not sure
-    // If this generates problems, use vector and sort it manually
-    set<set<size_t>> distinctViolations /*{{}}*/;
+    // Derive Distinct Violations - Set automatically sorts, but by set size? no it's lexicographic
+    // Use custom ordering function
+    set<set<size_t>> distinctViolationsSet /*{{}}*/;
     for (const FactType& fact : factList) {
-        distinctViolations.insert(fact.first);
+        distinctViolationsSet.insert(fact.first);
     }
+    vector<set<size_t>> distinctViolations (distinctViolationsSet.begin(), distinctViolationsSet.end());
+    sort(distinctViolations.begin(), distinctViolations.end(),
+         [](const set<size_t>& a, const set<size_t>& b) -> bool {
+         return a.size() < b.size();
+    });
 
     // Construct tree by adding all switches first
     indexedTopologyTree.clear();

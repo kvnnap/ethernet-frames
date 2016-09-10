@@ -253,22 +253,6 @@ void IndexedTopologyTree::addRule(size_t lhsNodeVal, size_t rhsNodeVal1, size_t 
 
 }
 
-bool IndexedTopologyTree::canValBePlaced(size_t valNodeIndex, size_t otherNodeIndex) const {
-    // Check that val is not in the violations list of the node
-    const IndexedTopologyNode& otherNode = getNode(otherNodeIndex);
-    const IndexedTopologyNode& valNode = getNode(valNodeIndex);
-    if (otherNode.violators.find(valNode.val) != otherNode.violators.end()) {
-        return false;
-    }
-    // Check whether there are any of valNode violators in the otherNode subtree
-    for (size_t violator : valNode.violators) {
-        if (contains(otherNodeIndex, violator)) {
-            return false;
-        }
-    }
-    return true;
-}
-
 size_t IndexedTopologyTree::findClosestCommonAncestor(size_t nodeAIndex, size_t nodeBIndex) const {
     size_t currNodeA = nodeAIndex;
     size_t currNodeB = nodeBIndex;
