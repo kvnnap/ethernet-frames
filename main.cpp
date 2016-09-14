@@ -104,7 +104,7 @@ int main(int argc, char *argv[])
         << "\t--sender - Sets as sender" << endl
         << "\t--ping=[stdConf,confInterval,noise,interThresholdCoefficient,minPings,maxPings] - Uses the ping-hopcount algorithm for discovery, default: " << strPingParameters << endl
         << "\t--receiver - Sets as receiver" << endl
-        << "\t--virtual=[netTopology.xml,masterIndex,masterRunCount] - Simulate master and receivers using a virtual network topology" << endl
+        << "\t--virtual=[Xml:netTopology.xml,masterIndex,masterRunCount] - Simulate master and receivers using a virtual network topology" << endl
         << "\t--grouped - Group leaf nodes on the same switch first before performing Algorithm 3/4 (incomplete graph resolution for this)" << endl
         << "\t--help - Shows this Usage Information" << endl;
         return EXIT_SUCCESS;
@@ -134,8 +134,7 @@ int main(int argc, char *argv[])
                 throw runtime_error("Invalid virtual topology parameters passed in argument");
             }
 
-            NetworkNodeFactory netNodeFactory;
-            SimulatedNetworkInterface simulatedNetworkInterface (netNodeFactory.make(vTopologyParameters[0]));
+            SimulatedNetworkInterface simulatedNetworkInterface (NetworkNodeFactory().make(vTopologyParameters[0]));
 
             const size_t masterIndex = vTopologyParameters.size() > 1 ? static_cast<uint32_t>(stoi(vTopologyParameters[1])) : 0;
             const size_t masterRunCount = vTopologyParameters.size() > 2 ? static_cast<uint32_t>(stoi(vTopologyParameters[2])) : 1;

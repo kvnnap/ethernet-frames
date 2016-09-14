@@ -24,6 +24,7 @@ file(GLOB_RECURSE SRC
     Mathematics/*.cpp
     NetworkInterface/*.cpp
     NetworkNode/*.cpp
+    Sampler/*.cpp
     Util/*.cpp
     XML/*.cpp
 )
