@@ -65,7 +65,7 @@ unique_ptr<SwitchNode> XMLNetworkNodeFactory::getSwitch(xml_node<> *xmlSwitchNod
     return switchNode;
 }
 
-std::unique_ptr<NetDeviceNode> XMLNetworkNodeFactory::getDevice(xml_node<> *xmlDeviceNode) {
+unique_ptr<NetDeviceNode> XMLNetworkNodeFactory::getDevice(xml_node<> *xmlDeviceNode) {
     string mac;
     for (xml_attribute<> *attr = xmlDeviceNode->first_attribute(); attr; attr = attr->next_attribute())
     {
@@ -86,13 +86,40 @@ std::unique_ptr<NetworkNode> RandomNetworkNodeFactory::make(const std::string &s
         throw invalid_argument("RandomNetworkNodeFactory - expecting number but got: " + settings);
     }
 
+    if (numVertices < 3) {
+        throw invalid_argument("RandomNetworkNodeFactory - expecting number >= 3, but got: " + settings);
+    }
+
     // Produce a random Prüfer Sequence
     vector<size_t> pruferSequence = generateRandomPruferSequence(numVertices);
 
-    // Generate tree given a Prüfer Sequence
+    // Generate edges given a Prüfer Sequence
+    vector<pair<size_t, size_t>> edges = generateEdgesFromPuferSequence(pruferSequence);
 
+    // Generate tree given edges
+    vector<unique_ptr<NetworkNode>> nodes (pruferSequence.size() + 2);
 
-    throw logic_error("RandomNetworkNodeFactory is not implemented");
+    // Add Switches
+    for (size_t slot : pruferSequence) {
+        unique_ptr<NetworkNode>& ptNode = nodes.at(slot - 1);
+        if (!ptNode) {
+            ptNode.reset(new SwitchNode());
+        }
+    }
+
+    // Add NetDeviceNodes
+    for (size_t nodeIndex = 0; nodeIndex < nodes.size(); ++nodeIndex) {
+        unique_ptr<NetworkNode>& ptNode = nodes[nodeIndex];
+        MacAddress mac;
+        // TODO: May overflow
+        mac.setArrayElement(5, static_cast<uint8_t>(nodeIndex + 1));
+        if (!ptNode) {
+            ptNode.reset(new NetDeviceNode(mac));
+        }
+    }
+
+    // All edges were acquired, form tree in correct directed order with respect to chosen root
+    return getNode(nodes, edges, pruferSequence.at(0));
 }
 
 vector<size_t> RandomNetworkNodeFactory::generateRandomPruferSequence(size_t numVertices) {
@@ -112,13 +139,14 @@ vector<size_t> RandomNetworkNodeFactory::generateRandomPruferSequence(size_t num
     return sequence;
 }
 
-std::vector<size_t> RandomNetworkNodeFactory::generateTreeFromPuferSequence(const std::vector<size_t> &pruferSequence) {
-    vector<size_t> parentTree (pruferSequence.size() + 2);
-    vector<size_t> degree (pruferSequence.size() + 2, 1);
+vector<pair<size_t, size_t>> RandomNetworkNodeFactory::generateEdgesFromPuferSequence(const std::vector<size_t> &pruferSequence) {
+    // Edges
+    vector<pair<size_t, size_t>> edges;
 
     // Initialise degrees
+    vector<size_t> degree (pruferSequence.size() + 2, 1);
     for (size_t slot : pruferSequence) {
-        ++degree[slot - 1];
+        ++degree.at(slot - 1);
     }
 
     // Insert edges by finding nodes of degree 1 (which are not in prufer sequence)
@@ -126,27 +154,55 @@ std::vector<size_t> RandomNetworkNodeFactory::generateTreeFromPuferSequence(cons
         for (size_t degIndex = 0; degIndex < degree.size(); ++degIndex) {
             if (degree[degIndex] == 1) {
                 // Connect in tree node[degIndex] with node[slot - 1]
+                edges.push_back({slot, degIndex + 1});
                 // reduce degrees
-                --degree[slot - 1];
+                --degree.at(slot - 1);
                 --degree[degIndex];
+                // next slot
+                break;
             }
         }
     }
 
     // Find last two nodes having degree value 1
     size_t u ( 0 );
-    size_t v;
+    size_t v ( 0 );
     for (size_t degIndex = 0; degIndex < degree.size(); ++degIndex) {
         if (degree[degIndex] == 1) {
             if (u == 0) {
-                u = degIndex;
+                u = degIndex + 1;
+            } else if (v == 0) /*sanity check*/{
+                v = degIndex + 1;
             } else {
-                v = degIndex;
+                throw runtime_error("RandomNetworkNodeFactory::generateTreeFromPuferSequence: More than two nodes with degree 1");
             }
         }
     }
 
-    // Connect in tree, node[u] with node[v]
+    // Connect in tree, node[u - 1] with node[v - 1]
+    edges.push_back({u, v});
 
-    return vector<size_t>();
+    return edges;
+}
+
+std::unique_ptr<NetworkNode> RandomNetworkNodeFactory::getNode(std::vector<std::unique_ptr<NetworkNode>> &nodes,
+                                                               std::vector<std::pair<size_t, size_t>> &edges, size_t currentNode) {
+    // Gather the child edges and delete them
+    vector<size_t> childEdges;
+    for (vector<pair<size_t, size_t>>::iterator it = edges.begin(); it != edges.end();) {
+        if (currentNode == it->first || currentNode == it->second) {
+            size_t childToAdd = currentNode == it->first ? it->second : it->first;
+            childEdges.push_back(childToAdd);
+            it = edges.erase(it);
+        } else {
+            ++it;
+        }
+    }
+
+    // Move child nodes and add them to this node
+    for (size_t childEdge : childEdges) {
+        nodes.at(currentNode - 1)->add(getNode(nodes, edges, childEdge));
+    }
+
+    return move(nodes.at(currentNode - 1));
 }
