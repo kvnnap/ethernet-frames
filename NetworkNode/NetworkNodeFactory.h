@@ -38,11 +38,11 @@ namespace Network {
         std::unique_ptr<NetworkNode> make(const std::string& settings) const override;
 
     private:
+        static std::vector<size_t> generateRandomPruferSequence(size_t numVertices);
+        static std::vector<std::pair<size_t, size_t>> generateEdgesFromPuferSequence(const std::vector<size_t>& pruferSequence);
         static std::unique_ptr<NetworkNode> getNode(std::vector<std::unique_ptr<NetworkNode>>& nodes,
                                                     std::vector<std::pair<size_t, size_t>>& edges,
                                                     size_t nodeNumber);
-        static std::vector<size_t> generateRandomPruferSequence(size_t numVertices);
-        static std::vector<std::pair<size_t, size_t>> generateEdgesFromPuferSequence(const std::vector<size_t>& pruferSequence);
     };
 }
 

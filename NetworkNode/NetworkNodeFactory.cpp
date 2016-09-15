@@ -101,7 +101,7 @@ std::unique_ptr<NetworkNode> RandomNetworkNodeFactory::make(const std::string &s
 
     // Add Switches
     for (size_t slot : pruferSequence) {
-        unique_ptr<NetworkNode>& ptNode = nodes.at(slot - 1);
+        unique_ptr<NetworkNode>& ptNode = nodes.at(slot);
         if (!ptNode) {
             ptNode.reset(new SwitchNode());
         }
@@ -133,7 +133,7 @@ vector<size_t> RandomNetworkNodeFactory::generateRandomPruferSequence(size_t num
 
     Sampler::UniformSampler uniformSampler;
     for (size_t i = 0; i < numVertices - 2; ++i) {
-        sequence.push_back(uniformSampler.nextSample(1, numVertices));
+        sequence.push_back(uniformSampler.nextSample(0, numVertices - 1));
     }
 
     return sequence;
@@ -146,17 +146,17 @@ vector<pair<size_t, size_t>> RandomNetworkNodeFactory::generateEdgesFromPuferSeq
     // Initialise degrees
     vector<size_t> degree (pruferSequence.size() + 2, 1);
     for (size_t slot : pruferSequence) {
-        ++degree.at(slot - 1);
+        ++degree.at(slot);
     }
 
     // Insert edges by finding nodes of degree 1 (which are not in prufer sequence)
     for (size_t slot : pruferSequence) {
         for (size_t degIndex = 0; degIndex < degree.size(); ++degIndex) {
             if (degree[degIndex] == 1) {
-                // Connect in tree node[degIndex] with node[slot - 1]
-                edges.push_back({slot, degIndex + 1});
+                // Connect in tree node[degIndex] with node[slot]
+                edges.push_back({slot, degIndex});
                 // reduce degrees
-                --degree.at(slot - 1);
+                --degree.at(slot);
                 --degree[degIndex];
                 // next slot
                 break;
@@ -165,21 +165,29 @@ vector<pair<size_t, size_t>> RandomNetworkNodeFactory::generateEdgesFromPuferSeq
     }
 
     // Find last two nodes having degree value 1
-    size_t u ( 0 );
-    size_t v ( 0 );
+    size_t u, v;
+    bool uNotSet ( true );
+    bool vNotSet ( true );
     for (size_t degIndex = 0; degIndex < degree.size(); ++degIndex) {
         if (degree[degIndex] == 1) {
-            if (u == 0) {
-                u = degIndex + 1;
-            } else if (v == 0) /*sanity check*/{
-                v = degIndex + 1;
+            if (uNotSet) {
+                u = degIndex;
+                uNotSet = false;
+            } else if (vNotSet) /*sanity check*/{
+                v = degIndex;
+                vNotSet = false; // do not break for sanity check
             } else {
                 throw runtime_error("RandomNetworkNodeFactory::generateTreeFromPuferSequence: More than two nodes with degree 1");
             }
         }
     }
 
-    // Connect in tree, node[u - 1] with node[v - 1]
+    // Another sanity check
+    if (uNotSet || vNotSet) {
+        throw runtime_error("RandomNetworkNodeFactory::generateTreeFromPuferSequence: Did not finish with two nodes of degree 1");
+    }
+
+    // Connect in tree, node[u] with node[v]
     edges.push_back({u, v});
 
     return edges;
@@ -201,8 +209,8 @@ std::unique_ptr<NetworkNode> RandomNetworkNodeFactory::getNode(std::vector<std::
 
     // Move child nodes and add them to this node
     for (size_t childEdge : childEdges) {
-        nodes.at(currentNode - 1)->add(getNode(nodes, edges, childEdge));
+        nodes.at(currentNode)->add(getNode(nodes, edges, childEdge));
     }
 
-    return move(nodes.at(currentNode - 1));
+    return move(nodes.at(currentNode));
 }
