@@ -10,6 +10,7 @@
 #include <queue>
 #include "Ethernet/MacAddress.h"
 #include "SimulationData.h"
+#include "Util/TreeSerialisable.h"
 
 namespace Network {
 
@@ -23,7 +24,9 @@ namespace Network {
     using NetNodePt = std::unique_ptr<NetworkNode>;
 
     class SimulatedNetworkInterface;
-    class NetworkNode {
+    class NetworkNode
+        : public Util::TreeSerialisable
+    {
     public:
 
         virtual ~NetworkNode();
@@ -32,17 +35,13 @@ namespace Network {
         NetworkNodeType getType() const;
         void add(NetNodePt netNodePt);
         std::vector<NetNodePt>& getChildPeerNodes();
+        const std::vector<NetNodePt>& getChildPeerNodes() const;
         std::vector<NetworkNode *>& getParentPeerNodes();
 
         static void send(SimulationData& p_simData, std::queue<SimulationData>& nodeSendQueue);
 
         // virtual methods
         virtual void receive(SimulationData& p_simData, std::queue<SimulationData>& nodeSendQueue) = 0;
-
-    protected:
-
-        // used only by networknodes
-        std::queue<SimulationData> nodeSendQueue;
 
     private:
         const NetworkNodeType type;

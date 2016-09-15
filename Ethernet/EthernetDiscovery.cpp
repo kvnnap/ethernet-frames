@@ -568,6 +568,7 @@ void EthernetDiscovery::discoverNetwork() {
 
     // Construct tree by adding all switches first
     indexedTopologyTree.clear();
+    indexedTopologyTree.setMacArray(slaveMacs);
     /*size_t rootIndex = */indexedTopologyTree.getNewNode(); // Add root, it's always there
     const vector<IndexedTopologyNode>& nodeList = indexedTopologyTree.getNodes();
     for (const set<size_t>& violationList : distinctViolations) {
@@ -1045,4 +1046,44 @@ void EthernetDiscovery::setPingParameters(const EthernetDiscovery::PingParameter
 
 void EthernetDiscovery::setGroupedSwitches(bool p_groupSwitches) {
     groupSwitches = p_groupSwitches;
+}
+
+Util::NodePt EthernetDiscovery::getTreeFromParentBasedIndexTree(const std::vector<size_t> &parentBasedIndexTree) const {
+    // Find root
+    size_t rootIndex;
+    for (rootIndex = 0; rootIndex < parentBasedIndexTree.size(); ++rootIndex) {
+        if (rootIndex == parentBasedIndexTree[rootIndex]) {
+            break;
+        }
+    }
+    // Find
+    return getTreeFromParentBasedIndexTree(parentBasedIndexTree, rootIndex);
+}
+
+Util::NodePt EthernetDiscovery::getTreeFromParentBasedIndexTree(const std::vector<size_t> &parentBasedIndexTree,
+                                                                size_t nodeIndex) const {
+    using namespace Util;
+    // Check if leaf
+    bool isLeaf = true;
+    for(size_t i = 0; i < parentBasedIndexTree.size(); ++i) {
+        if (parentBasedIndexTree[i] == nodeIndex) {
+            // Not leaf
+            isLeaf = false;
+            break;
+        }
+    }
+
+    if (isLeaf) {
+        return NodePt(new Leaf<MacAddress>(slaveMacs.at(nodeIndex)));
+    } else {
+        NodePt node (new Node());
+        //        static_cast<Node *>(node.get())->addChild(child->toTree());
+        for(size_t i = 0; i < parentBasedIndexTree.size(); ++i) {
+            if (parentBasedIndexTree[i] == nodeIndex) {
+                // i is a child node
+                static_cast<Node *>(node.get())->addChild(getTreeFromParentBasedIndexTree(parentBasedIndexTree, i));
+            }
+        }
+        return node;
+    }
 }

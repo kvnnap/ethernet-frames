@@ -55,3 +55,12 @@ void SwitchNode::receive(SimulationData& p_simData, std::queue<SimulationData>& 
         }
     }
 }
+
+Util::NodePt SwitchNode::toTree() const {
+    using namespace Util;
+    NodePt node (new Node());
+    for (const NetNodePt& child : getChildPeerNodes()) {
+        static_cast<Node *>(node.get())->addChild(child->toTree());
+    }
+    return node;
+}

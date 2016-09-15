@@ -158,4 +158,8 @@ const std::vector<NetDeviceNode *> &SimulatedNetworkInterface::getNetDevices() c
     return netDevices;
 }
 
+const NetNodePt& SimulatedNetworkInterface::getNetworkTree() const {
+    return rootNode;
+}
+
 

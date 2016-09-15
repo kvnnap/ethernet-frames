@@ -11,6 +11,7 @@
 #include "ISocketListener.h"
 #include "IndexedTopologyTree.h"
 #include "Mathematics/Matrix.h"
+#include "Util/Node.h"
 
 namespace  Network {
 
@@ -77,6 +78,8 @@ namespace  Network {
         Mathematics::Matrix<float> startPingBasedDiscovery();
         Mathematics::Matrix<uint32_t> rttToHopCount(const Mathematics::Matrix<float>& rttMatrix) const;
         static std::vector<size_t> hopCountToTopology(const Mathematics::Matrix<uint32_t>& hopMatrix);
+        Util::NodePt getTreeFromParentBasedIndexTree(const std::vector<size_t>& parentBasedIndexTree) const;
+        Util::NodePt getTreeFromParentBasedIndexTree(const std::vector<size_t>& parentBasedIndexTree, size_t nodeIndex) const;
 
         // Data
         EthernetSocket & ethernetSocket;

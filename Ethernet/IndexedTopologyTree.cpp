@@ -33,6 +33,19 @@ void IndexedTopologyNode::deleteChild(size_t childIndex) {
     children.erase(remove(children.begin(), children.end(), childIndex), children.end());
 }
 
+Util::NodePt IndexedTopologyNode::toTree(const IndexedTopologyTree &indexedTopologyTree) const {
+    using namespace Util;
+    if (isLeaf()) {
+        return NodePt(new Leaf<MacAddress>(indexedTopologyTree.getMacArray().at(val)));
+    } else {
+        NodePt node (new Node());
+        for (size_t childIndex : children) {
+            static_cast<Node *>(node.get())->addChild(indexedTopologyTree.getNode(childIndex).toTree(indexedTopologyTree));
+        }
+        return node;
+    }
+}
+
 ostream& Network::operator<<(ostream &strm, const IndexedTopologyNode &itn) {
     strm << "IndexedTopologyNode:" << endl
          << "\tisLeaf: " << (itn.isLeaf() ? "Yes" : "No" ) << endl;
@@ -303,6 +316,23 @@ bool IndexedTopologyTree::canNodeBePlaced(size_t thisNodeIndex, size_t otherNode
     }
     set<size_t> thisNodeChildren = getChildrenOf(thisNodeIndex);
     return Mathematics::SetOperations::setsDisjoint(getChildrenOf(thisNodeIndex), otherNode.violators);
+}
+
+Util::NodePt IndexedTopologyTree::toTree() const {
+    using namespace Util;
+    if (nodes.size() == 0) {
+        throw runtime_error("Cannot convert an IndexedTopologyTree to Tree");
+    }
+    // We assume first node is root
+    return nodes[0].toTree(*this);
+}
+
+const std::vector<MacAddress> &IndexedTopologyTree::getMacArray() const {
+    return slaveMacs;
+}
+
+void IndexedTopologyTree::setMacArray(const std::vector<MacAddress> & sM) {
+    slaveMacs = sM;
 }
 
 ostream& Network::operator<<(ostream &strm, const IndexedTopologyTree &itt) {

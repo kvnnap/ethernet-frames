@@ -37,6 +37,10 @@ void NetworkNode::send(SimulationData& p_simData, queue<SimulationData>& nodeSen
     nodeSendQueue.push(p_simData);
 }
 
+const vector<NetNodePt> &NetworkNode::getChildPeerNodes() const {
+    return peerNodes;
+}
+
 
 
 

@@ -25,6 +25,8 @@ namespace Network {
         ssize_t recvFrom(uint8_t * buffer, size_t lenBuffer);
         // Virtual
         void receive(SimulationData& p_simData, std::queue<SimulationData>& nodeSendQueue) override;
+        // Tree Serialiser
+        Util::NodePt toTree() const override;
 
     private:
         MacAddress macAddress;

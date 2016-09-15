@@ -30,6 +30,8 @@ namespace Network {
         SwitchNode();
 
         void receive(SimulationData& p_simData, std::queue<SimulationData>& nodeSendQueue) override;
+        // Tree Serialiser
+        Util::NodePt toTree() const override;
     private:
         std::unordered_map<MacAddress, NetworkNode *> macPortMap;
     };

@@ -37,6 +37,7 @@ namespace Network {
         // own methods
         size_t getNumNetDevices() const;
         const std::vector<NetDeviceNode *>& getNetDevices() const;
+        const NetNodePt& getNetworkTree() const;
 
     private:
         NetNodePt rootNode;

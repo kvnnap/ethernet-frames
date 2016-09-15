@@ -9,9 +9,12 @@
 #include <vector>
 #include <map>
 #include <set>
+#include "Util/TreeSerialisable.h"
+#include "MacAddress.h"
 
 namespace Network {
 
+    class IndexedTopologyTree;
     class IndexedTopologyNode {
     public:
         IndexedTopologyNode(size_t p_val = static_cast<size_t>(-1));
@@ -26,14 +29,17 @@ namespace Network {
         std::size_t val;
         bool parentSet;
 
+        Util::NodePt toTree(const IndexedTopologyTree& indexedTopologyTree) const;
+
         // When in connection with first, violations in second apply
         std::set<std::size_t> violators;
-        //std::set<std::size_t> childVals;
     };
 
     std::ostream& operator<< (std::ostream& strm, const IndexedTopologyNode& indexedTopologyNode);
 
-    class IndexedTopologyTree {
+    class IndexedTopologyTree
+        : public Util::TreeSerialisable
+    {
     public:
         size_t getNewNode();
         size_t addNewNode(const IndexedTopologyNode& node);
@@ -62,10 +68,19 @@ namespace Network {
         size_t findParentNodeOf(size_t val) const;
         bool contains(size_t subtreeIndex, size_t val) const;
 
+        // Tree Serialiser
+        Util::NodePt toTree() const override;
+
+        // Used for Index to Mac resolution when converting to Tree
+        const std::vector<MacAddress>& getMacArray() const;
+        void setMacArray(const std::vector<MacAddress>&);
+
     private:
         std::vector<IndexedTopologyNode> nodes;
-        //std::vector<std::pair<size_t, std::set<size_t>>> factList;
         std::map<std::set<size_t>, std::set<size_t>> factList;
+
+        // Used for Index to Mac resolution when converting to Tree
+        std::vector<MacAddress> slaveMacs;
     };
 
     std::ostream& operator<< (std::ostream& strm, const IndexedTopologyTree& indexedTopologyTree);
