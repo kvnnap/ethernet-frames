@@ -96,5 +96,5 @@ void NetDeviceNode::sendTo(const uint8_t *buffer, size_t lenBuffer) {
 
 Util::NodePt NetDeviceNode::toTree() const {
     using namespace Util;
-    return NodePt(new Leaf<MacAddress>(macAddress));
+    return NodePt(new Leaf(macAddress));
 }

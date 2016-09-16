@@ -23,9 +23,9 @@
 using namespace std;
 using namespace Network;
 
-EthernetSocket::EthernetSocket(const string &p_interfaceName, INetworkInterface& p_netInterface)
+EthernetSocket::EthernetSocket(const string &p_interfaceName, INetworkInterface& p_netInterface, uint32_t p_sendDelayAmount)
     : interfaceName ( p_interfaceName ), socket_address(), sendBuffer (BUFFER_SIZE), receiveBuffer (BUFFER_SIZE),
-      netInterface ( p_netInterface )
+      netInterface ( p_netInterface ), sendDelayAmount ( p_sendDelayAmount )
 {
     if (p_interfaceName.length() > IFNAMSIZ) {
         // Throw exception
@@ -114,7 +114,9 @@ void EthernetSocket::send(EthernetFrame &ef, const DataBuffer &data) {
         throw runtime_error(string("send: ") + strerror(errno));
     }
 
-    this_thread::sleep_for(chrono::milliseconds(32));
+    if (sendDelayAmount) {
+        this_thread::sleep_for(chrono::milliseconds(sendDelayAmount));
+    }
 }
 
 ssize_t EthernetSocket::receive(ISocketListener * iSocketListener, const MacAddress * destination, const MacAddress * source) {

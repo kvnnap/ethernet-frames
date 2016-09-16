@@ -26,7 +26,7 @@ namespace Network {
     class EthernetSocket {
     public:
         // Initialises an Ethernet Socket on the interface provided
-        EthernetSocket(const std::string& p_interfaceName, INetworkInterface& p_netInterface);
+        EthernetSocket(const std::string& p_interfaceName, INetworkInterface& p_netInterface, uint32_t p_sendDelayAmount = 0);
         ~EthernetSocket();
 
         const DataBuffer& getReceiveBuffer() const;
@@ -47,6 +47,9 @@ namespace Network {
         ISocketListener * iSocketListener;
 
         INetworkInterface & netInterface;
+
+        // Hotfix
+        uint32_t sendDelayAmount;
     };
 
 }

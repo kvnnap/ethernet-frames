@@ -37,7 +37,8 @@ namespace  Network {
             BEGIN_PING = 11,
             END_PING = 12,
             PING = 13,
-            PONG = 14
+            PONG = 14,
+            EXIT = 15
         };
 
         struct PingParameters {
@@ -53,9 +54,12 @@ namespace  Network {
 
         void setPingParameters(const PingParameters& p_pingParameters);
         void setGroupedSwitches(bool p_groupSwitches);
-        void master(bool isPingBased);
+        Util::NodePt getToplogyTree();
         void slave();
         void clear();
+
+        // Final
+        void terminateSlaves();
 
         // Overrides
         bool dataArrival(EthernetFrame& ef, uint8_t * data, size_t len) override;
@@ -93,6 +97,7 @@ namespace  Network {
         // Ping Based Data
         float pingTime;
         PingParameters pingParameters;
+        bool isPingBased;
 
         // Grouping
         bool groupSwitches;

@@ -7,6 +7,8 @@
 
 #include <vector>
 #include <memory>
+#include <sstream>
+#include "Ethernet/MacAddress.h"
 
 namespace Util {
     enum NodeType {
@@ -14,25 +16,38 @@ namespace Util {
         LEAF
     };
 
-    class INode {
+    class AbstractNode {
     public:
 
-        virtual ~INode();
+        virtual ~AbstractNode();
 
         virtual NodeType getType() const = 0;
-        virtual bool operator== (const INode& other) const = 0;
+        // This is architectural equality, need to define another type
+        virtual bool operator== (const AbstractNode& other) const = 0;
+        //virtual bool deleteValue(const Network::MacAddress& value) = 0;
+
+        // To Dot string
+        std::string toDot() const;
+        virtual std::string toDotEdges(size_t& labelNum) const = 0;
+
+        // To Dot File
+        void toDotFile(const std::string& fileName) const;
     };
 
-    using NodePt = std::unique_ptr<INode>;
+    using NodePt = std::unique_ptr<AbstractNode>;
 }
 namespace Util {
     class Node
-        : public INode
+        : public AbstractNode
     {
     public:
 
         NodeType getType() const override;
-        virtual bool operator== (const INode& other) const override;
+
+        virtual bool operator== (const AbstractNode& other) const override;
+        //virtual bool deleteValue(const Network::MacAddress& value) override;
+
+        virtual std::string toDotEdges(size_t& labelNum) const override;
 
         const std::vector<NodePt>& getChildren() const;
         size_t getChildrenSize() const;
@@ -44,29 +59,27 @@ namespace Util {
 }
 
 namespace Util {
-    template <class T>
+    //template <class T>
     class Leaf
-        : public INode
+        : public AbstractNode
     {
     public:
 
-        Leaf(const T& value) : value ( value ) {};
-        NodeType getType() const override {
-            return LEAF;
-        }
-        virtual bool operator== (const INode& other) const override {
-            return other.getType() == LEAF && value == static_cast<const Leaf&>(other).value;
-        };
+        Leaf(const Network::MacAddress& value);
 
-        T getValue() const {
-            return value;
-        };
-        T& getValueRef() const {
-            return value;
-        };
+        NodeType getType() const override;
+
+        virtual bool operator== (const AbstractNode& other) const override;
+        //virtual bool deleteValue(const Network::MacAddress& value) override;
+
+        virtual std::string toDotEdges(size_t& labelNum) const override;
+
+        Network::MacAddress getValue() const;
+        const Network::MacAddress& getValueRef() const;
 
     private:
-        T value;
+
+        Network::MacAddress value;
     };
 }
 

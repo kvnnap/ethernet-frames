@@ -24,7 +24,9 @@ EthernetDiscovery::EthernetDiscovery(EthernetSocket &ethernetSocket)
           lastMessage (EMPTY),
           testReceived ( false ),
           pingTime ( 0.f ),
+          isPingBased ( false ),
           groupSwitches (false)
+
 { }
 
 
@@ -56,7 +58,7 @@ bool EthernetDiscovery::dataArrival(Network::EthernetFrame &ef, uint8_t *data, s
                 replyEf.sourceMac = ethernetSocket.getInterfaceMac();
                 ethernetSocket.send(replyEf, {MessageType::HELLO});
             } else {
-                // Add to list - Verify that we are master
+                // Add to list - Verify that we are getToplogyTree
                 slaveMacs.push_back(ef.sourceMac);
             }
         }
@@ -311,6 +313,13 @@ bool EthernetDiscovery::dataArrival(Network::EthernetFrame &ef, uint8_t *data, s
             if (ef.destinationMac == ethernetSocket.getInterfaceMac()) {
                 return false;
             }
+        }
+            break;
+
+        // Slave Message - Message meant to terminate the processes
+        case MessageType::EXIT:
+        {
+            return false;
         }
             break;
 
@@ -679,7 +688,7 @@ void EthernetDiscovery::discoverNetwork() {
     }
 }
 
-void EthernetDiscovery::master(bool isPingBased) {
+Util::NodePt EthernetDiscovery::getToplogyTree() {
 
     // Algorithm 1
     getAllDevices();
@@ -700,6 +709,7 @@ void EthernetDiscovery::master(bool isPingBased) {
         for (size_t i = 0; i < parent.size(); ++i) {
             cout << i << ") " << parent[i] << endl;
         }
+        return getTreeFromParentBasedIndexTree(parent);
     } else {
 
         // Algorithm 2
@@ -720,7 +730,12 @@ void EthernetDiscovery::master(bool isPingBased) {
         // Algorithm 4 - Our version of the idea
         discoverNetwork();
 
-        cout << indexedTopologyTree << endl;
+        // Terminate slaves
+        terminateSlaves();
+
+        return indexedTopologyTree.toTree();
+
+        //cout << indexedTopologyTree << endl;
     }
 }
 
@@ -1042,6 +1057,7 @@ void EthernetDiscovery::setPingParameters(const EthernetDiscovery::PingParameter
         throw runtime_error("Invalid Ping Parameters Values");
     }
     pingParameters = p_pingParameters;
+    isPingBased = true;
 }
 
 void EthernetDiscovery::setGroupedSwitches(bool p_groupSwitches) {
@@ -1074,7 +1090,7 @@ Util::NodePt EthernetDiscovery::getTreeFromParentBasedIndexTree(const std::vecto
     }
 
     if (isLeaf) {
-        return NodePt(new Leaf<MacAddress>(slaveMacs.at(nodeIndex)));
+        return NodePt(new Leaf(slaveMacs.at(nodeIndex)));
     } else {
         NodePt node (new Node());
         //        static_cast<Node *>(node.get())->addChild(child->toTree());
@@ -1086,4 +1102,10 @@ Util::NodePt EthernetDiscovery::getTreeFromParentBasedIndexTree(const std::vecto
         }
         return node;
     }
+}
+
+void EthernetDiscovery::terminateSlaves() {
+    EthernetFrame ef;
+    ef.destinationMac = MacAddress::BroadcastMac;
+    ethernetSocket.send(ef, {MessageType::EXIT});
 }

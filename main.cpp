@@ -32,6 +32,69 @@
 
 using namespace std;
 using namespace Network;
+using namespace Util;
+
+NodePt runVirtualTopology( bool isPingBased, const EthernetDiscovery::PingParameters& pingParameters, bool isGrouped,
+                          const string& interfaceName,
+                          SimulatedNetworkInterface& simulatedNetworkInterface,
+                          size_t masterIndex,
+                          size_t masterRunCount)
+{
+    const size_t numDevices = simulatedNetworkInterface.getNumNetDevices();
+
+    if (masterIndex >= numDevices) {
+        throw runtime_error ("Master index out of range");
+    }
+
+    // List Devices
+    for (size_t i = 0; i < numDevices; ++i) {
+        cout << i << ") " << simulatedNetworkInterface.getNetDevices()[i]->getMacAddress();
+        if (i == masterIndex) {
+            cout << " (Master)";
+        }
+        cout << endl;
+    }
+
+    vector<thread> threads;
+    vector<EthernetSocket> es;
+    vector<EthernetDiscovery> ed;
+    es.reserve(numDevices);
+    ed.reserve(numDevices);
+    threads.reserve(numDevices - 1);
+    for (size_t i = 0; i < numDevices; ++i) {
+        es.emplace_back(interfaceName, simulatedNetworkInterface);
+        ed.emplace_back(es[i]);
+        if (i != masterIndex) {
+            threads.emplace_back(&EthernetDiscovery::slave, ed[i]);
+        }
+    }
+    if (isPingBased) {
+        ed[masterIndex].setPingParameters(pingParameters);
+    } else {
+        ed[masterIndex].setGroupedSwitches(isGrouped);
+    }
+    string virtException;
+    NodePt  topologyTree;
+    for (size_t i = 0; i < masterRunCount; ++i) {
+        cout << "Master Run: #" << (i + 1) << endl;
+        try {
+            topologyTree = ed[masterIndex].getToplogyTree();
+        } catch (const exception& ex) {
+            virtException = ex.what();
+            cout << "Virtual Master Catch Block: " << ex.what() << endl;
+            ed[masterIndex].terminateSlaves();
+        }
+        ed[masterIndex].clear();
+    }
+    for (size_t i = 0; i < threads.size(); ++i) {
+        threads[i].join();
+    }
+    if (!virtException.empty()) {
+        throw runtime_error(virtException);
+    }
+
+    return topologyTree;
+}
 
 int main(int argc, char *argv[])
 {
@@ -40,6 +103,7 @@ int main(int argc, char *argv[])
     string virtualTopologyParameters;
     // StdConfidence, Confidence Interval Value, measurement noise(first pass),interThreshold Coefficient
     string strPingParameters = "2,0.001,0.008,3,2,1024";
+    uint32_t sendDelayAmount = 0;
     bool isSender = true;
     bool isPingBased = false;
     bool isVirtual = false;
@@ -52,6 +116,7 @@ int main(int argc, char *argv[])
             {"sender",    no_argument,       nullptr, 's'},
             {"ping",      optional_argument, nullptr, 'p'},
             {"receiver",  no_argument,       nullptr, 'r'},
+            {"delay",     optional_argument, nullptr, 'd'},
             {"virtual",   required_argument, nullptr, 'v'},
             {"grouped",   no_argument,       nullptr, 'g'},
             {"help",      no_argument,       nullptr, 'h'},
@@ -67,6 +132,14 @@ int main(int argc, char *argv[])
                 break;
             case 's':
                 isSender = true;
+                break;
+            case 'd':
+            {
+                int sDA = optarg ? stoi(optarg) : 32;
+                if (sDA >= 0) {
+                    sendDelayAmount = static_cast<uint32_t>(sDA);
+                }
+            }
                 break;
             case 'p':
                 isPingBased = true;
@@ -104,7 +177,8 @@ int main(int argc, char *argv[])
         << "\t--sender - Sets as sender" << endl
         << "\t--ping=[stdConf,confInterval,noise,interThresholdCoefficient,minPings,maxPings] - Uses the ping-hopcount algorithm for discovery, default: " << strPingParameters << endl
         << "\t--receiver - Sets as receiver" << endl
-        << "\t--virtual=[Xml:netTopology.xml,masterIndex,masterRunCount] - Simulate master and receivers using a virtual network topology" << endl
+        << "\t--delay=[32] - (HotFix) Delays the send Method, fixing packet re-ordering. Only has effect on non-virtual runs" << endl
+        << "\t--virtual=[Xml:netTopology.xml,masterIndex,masterRunCount] - Simulate getToplogyTree and receivers using a virtual network topology" << endl
         << "\t--grouped - Group leaf nodes on the same switch first before performing Algorithm 3/4 (incomplete graph resolution for this)" << endl
         << "\t--help - Shows this Usage Information" << endl;
         return EXIT_SUCCESS;
@@ -134,58 +208,25 @@ int main(int argc, char *argv[])
                 throw runtime_error("Invalid virtual topology parameters passed in argument");
             }
 
-            SimulatedNetworkInterface simulatedNetworkInterface (NetworkNodeFactory().make(vTopologyParameters[0]));
-
             const size_t masterIndex = vTopologyParameters.size() > 1 ? static_cast<uint32_t>(stoi(vTopologyParameters[1])) : 0;
             const size_t masterRunCount = vTopologyParameters.size() > 2 ? static_cast<uint32_t>(stoi(vTopologyParameters[2])) : 1;
-            const size_t numDevices = simulatedNetworkInterface.getNumNetDevices();
 
-            if (masterIndex >= numDevices) {
-                throw runtime_error ("Master index out of range");
-            }
+            SimulatedNetworkInterface simulatedNetworkInterface (NetworkNodeFactory().make(vTopologyParameters[0]));
 
-            // List Devices
-            for (size_t i = 0; i < numDevices; ++i) {
-                cout << i << ") " << simulatedNetworkInterface.getNetDevices()[i]->getMacAddress();
-                if (i == masterIndex) {
-                    cout << " (Master)";
-                }
-                cout << endl;
-            }
+            NodePt originalTopology = simulatedNetworkInterface.getNetworkTree()->toTree();
+            // Remove master from original topology, as this cannot (with all methods) be detected
 
-            vector<thread> threads;
-            vector<EthernetSocket> es;
-            vector<EthernetDiscovery> ed;
-            es.reserve(numDevices);
-            ed.reserve(numDevices);
-            threads.reserve(numDevices - 1);
-            for (size_t i = 0; i < numDevices; ++i) {
-                es.emplace_back(interfaceName, simulatedNetworkInterface);
-                ed.emplace_back(es[i]);
-                if (i != masterIndex) {
-                    threads.emplace_back(&EthernetDiscovery::slave, ed[i]);
-                }
-            }
-            if (isPingBased) {
-                ed[masterIndex].setPingParameters(pingParameters);
-            } else {
-                ed[masterIndex].setGroupedSwitches(isGrouped);
-            }
-            for (size_t i = 0; i < masterRunCount; ++i) {
-                cout << "Master Run: #" << (i + 1) << endl;
-                try {
-                    ed[masterIndex].master(isPingBased);
-                } catch (const exception& ex) {
-                    cout << "Virtual Master Catch Block: " << ex.what() << endl;
-                }
-                ed[masterIndex].clear();
-            }
-            for (size_t i = 0; i < threads.size(); ++i) {
-                threads[i].join();
-            }
+            NodePt detectedTopology = runVirtualTopology(isPingBased, pingParameters, isGrouped, interfaceName, simulatedNetworkInterface, masterIndex, masterRunCount);
+
+            originalTopology->toDotFile("original-topology.dot");
+            detectedTopology->toDotFile("detected-topology.dot");
+
+            //cout << ((*originalTopology == *detectedTopology) ? "Toplogies are exactly equal" : "Topologies are not exactly equal") << endl;
+
         } else {
             LinuxNetworkInterface linuxNetworkInterface;
-            EthernetSocket es (interfaceName, linuxNetworkInterface);
+            // Ping based check here works only for the Master - the slaves will never know this.
+            EthernetSocket es (interfaceName, linuxNetworkInterface, isPingBased ? 0 : sendDelayAmount);
             EthernetDiscovery ed (es);
 
             if (isSender) {
@@ -194,7 +235,7 @@ int main(int argc, char *argv[])
                 } else {
                     ed.setGroupedSwitches(isGrouped);
                 }
-                ed.master(isPingBased);
+                ed.getToplogyTree()->toDotFile("detected-topology.dot");;
             } else {
                 ed.slave();
             }
