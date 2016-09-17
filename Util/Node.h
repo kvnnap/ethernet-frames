@@ -16,15 +16,22 @@ namespace Util {
         LEAF
     };
 
+    class AbstractNode;
+    class Node;
+    class Leaf;
+    using NodePt = std::unique_ptr<AbstractNode>;
+
     class AbstractNode {
     public:
 
+        AbstractNode();
         virtual ~AbstractNode();
 
         virtual NodeType getType() const = 0;
         // This is architectural equality, need to define another type
         virtual bool operator== (const AbstractNode& other) const = 0;
-        //virtual bool deleteValue(const Network::MacAddress& value) = 0;
+        virtual Leaf* findNode(const Network::MacAddress& value) = 0;
+        bool deleteValue(const Network::MacAddress& value);
 
         // To Dot string
         std::string toDot() const;
@@ -32,9 +39,15 @@ namespace Util {
 
         // To Dot File
         void toDotFile(const std::string& fileName) const;
+
+        // Access parent
+        void setParent(Node * p_parent);
+        Node * getParent();
+    private:
+        // No unique_ptr needed, this reference will always be true
+        Node * parent;
     };
 
-    using NodePt = std::unique_ptr<AbstractNode>;
 }
 namespace Util {
     class Node
@@ -45,7 +58,9 @@ namespace Util {
         NodeType getType() const override;
 
         virtual bool operator== (const AbstractNode& other) const override;
-        //virtual bool deleteValue(const Network::MacAddress& value) override;
+        Leaf* findNode(const Network::MacAddress& value) override;
+        NodePt deleteChild(const AbstractNode* node);
+        NodePt makeRoot(NodePt currentRoot);
 
         virtual std::string toDotEdges(size_t& labelNum) const override;
 
@@ -70,6 +85,7 @@ namespace Util {
         NodeType getType() const override;
 
         virtual bool operator== (const AbstractNode& other) const override;
+        Leaf* findNode(const Network::MacAddress& value) override;
         //virtual bool deleteValue(const Network::MacAddress& value) override;
 
         virtual std::string toDotEdges(size_t& labelNum) const override;

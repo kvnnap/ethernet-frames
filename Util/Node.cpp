@@ -10,6 +10,11 @@
 using namespace std;
 using namespace Util;
 
+AbstractNode::AbstractNode()
+        : parent (nullptr)
+{
+
+}
 AbstractNode::~AbstractNode() {
 
 }
@@ -25,6 +30,30 @@ void AbstractNode::toDotFile(const std::string &fileName) const {
     ofstream (fileName) << toDot() << endl;
 }
 
+void AbstractNode::setParent(Node *p_parent) {
+    parent = p_parent;
+}
+
+Node *AbstractNode::getParent() {
+    return parent;
+}
+
+bool AbstractNode::deleteValue(const Network::MacAddress &value) {
+    AbstractNode * nodeToDelete = findNode(value);
+    if (nodeToDelete != nullptr) {
+        Node * parent = nodeToDelete->getParent();
+        if (parent == nullptr) {
+            throw runtime_error ("Cannot delete node that has no parent");
+        }
+        // Find child in parent node
+        if (!parent->deleteChild(nodeToDelete)) {
+            throw runtime_error ("Child to delete cannot be found in the parent node. Tree is an inconsistent state");
+        }
+        return true;
+    }
+    return false;
+}
+
 NodeType Node::getType() const {
     return NODE;
 }
@@ -34,6 +63,7 @@ const std::vector<NodePt> &Node::getChildren() const {
 }
 
 void Node::addChild(NodePt child) {
+    child->setParent(this);
     children.push_back(move(child));
 }
 
@@ -81,27 +111,61 @@ string Node::toDotEdges(size_t& labelNum) const {
     return ss.str();
 }
 
-//template <class T>
-//NodeType Leaf<T>::getType() const {
-//    return LEAF;
-//}
-//
-//template <class T>
-//T Leaf<T>::getValue() const {
-//    return value;
-//}
-//
-//template <class T>
-//T &Leaf<T>::getValueRef() const {
-//    return value;
-//}
-//
-//template <class T>
-//bool Leaf<T>::operator==(const AbstractNode &other) const {
-//    return other.getType() == LEAF && value == static_cast<const Leaf&>(other).value;
-//}
+Leaf *Node::findNode(const Network::MacAddress &value) {
+    for (const NodePt& child : children) {
+        Leaf * result = child->findNode(value);
+        if (result != nullptr) {
+            return result;
+        }
+    }
+    return nullptr;
+}
 
-//template class Leaf<MacAddress>;
+NodePt Node::deleteChild(const AbstractNode *node) {
+    for (vector<NodePt>::iterator it = children.begin(); it != children.end(); ++it) {
+        if ((*it).get() == node) {
+            NodePt ret = move(*it);
+            children.erase(it);
+            return ret;
+        }
+    }
+    return NodePt();
+}
+
+NodePt Node::makeRoot(NodePt currentRoot) {
+    // Find path from this node to currentRoot
+    vector<Node *> path;
+    Node * node = this;
+    do {
+        // Add to path
+        path.push_back(node);
+
+        // Update Variable
+        node = node->getParent();
+    } while (node != nullptr);
+
+    // Check
+    if (currentRoot.get() != static_cast<AbstractNode*>(path[path.size() - 1])) {
+        throw runtime_error("Root Mismatch: The currentRoot passed as parameter is not the actual currentRoot");
+    }
+
+    // Make modifications
+    for (ssize_t i = path.size() - 1; i > 0; --i) {
+        // Gather nodes
+        Node * parent = path[i]; // currentRoot and parent are in sync
+        Node * child = path[i - 1];
+
+        // Make child the parent of parent
+        NodePt childST = parent->deleteChild(child);
+        childST->setParent(nullptr);
+        static_cast<Node *>(childST.get())->addChild(move(currentRoot));
+
+        //
+        currentRoot = move(childST);
+    }
+
+    return currentRoot;
+}
 
 Leaf::Leaf(const Network::MacAddress &value)  : value ( value ) {
 
@@ -127,4 +191,11 @@ Network::MacAddress Leaf::getValue() const  {
 
 const Network::MacAddress &Leaf::getValueRef() const  {
     return value;
+}
+
+Leaf* Leaf::findNode(const Network::MacAddress &p_value) {
+    if (value == p_value) {
+        return this;
+    }
+    return nullptr;
 };

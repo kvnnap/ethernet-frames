@@ -215,13 +215,16 @@ int main(int argc, char *argv[])
 
             NodePt originalTopology = simulatedNetworkInterface.getNetworkTree()->toTree();
             // Remove master from original topology, as this cannot (with all methods) be detected
+            originalTopology->deleteValue(simulatedNetworkInterface.getNetDevices().at(masterIndex)->getMacAddress());
+//            Leaf * leaf = originalTopology->findNode(simulatedNetworkInterface.getNetDevices().at(5)->getMacAddress());
+//            originalTopology = leaf->getParent()->makeRoot(move(originalTopology));
 
             NodePt detectedTopology = runVirtualTopology(isPingBased, pingParameters, isGrouped, interfaceName, simulatedNetworkInterface, masterIndex, masterRunCount);
 
             originalTopology->toDotFile("original-topology.dot");
             detectedTopology->toDotFile("detected-topology.dot");
 
-            //cout << ((*originalTopology == *detectedTopology) ? "Toplogies are exactly equal" : "Topologies are not exactly equal") << endl;
+            cout << ((*originalTopology == *detectedTopology) ? "Topologies are exactly equal" : "Topologies are not exactly equal") << endl;
 
         } else {
             LinuxNetworkInterface linuxNetworkInterface;
