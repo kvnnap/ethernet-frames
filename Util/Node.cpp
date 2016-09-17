@@ -4,11 +4,13 @@
 
 #include <sstream>
 #include <fstream>
+#include <algorithm>
 
 #include "Node.h"
 
 using namespace std;
 using namespace Util;
+using namespace Network;
 
 AbstractNode::AbstractNode()
         : parent (nullptr)
@@ -38,7 +40,7 @@ Node *AbstractNode::getParent() {
     return parent;
 }
 
-bool AbstractNode::deleteValue(const Network::MacAddress &value) {
+bool AbstractNode::deleteValue(const MacAddress &value) {
     AbstractNode * nodeToDelete = findNode(value);
     if (nodeToDelete != nullptr) {
         Node * parent = nodeToDelete->getParent();
@@ -111,7 +113,7 @@ string Node::toDotEdges(size_t& labelNum) const {
     return ss.str();
 }
 
-Leaf *Node::findNode(const Network::MacAddress &value) {
+Leaf *Node::findNode(const MacAddress &value) {
     for (const NodePt& child : children) {
         Leaf * result = child->findNode(value);
         if (result != nullptr) {
@@ -167,13 +169,101 @@ NodePt Node::makeRoot(NodePt currentRoot) {
     return currentRoot;
 }
 
-Leaf::Leaf(const Network::MacAddress &value)  : value ( value ) {
+bool Node::weakEquality(const AbstractNode &other) const {
 
+    vector<pair<set<MacAddress>, size_t>> first, second;
+    for (size_t i = 0; i < children.size(); ++i) {
+        set<MacAddress> childSet = children[i]->getValues();
+        if (childSet.size() > 0) {
+            first.push_back({childSet, i});
+        }
+    }
+
+    // If no children contribute, then no values. Check if other has no values and deem it equal if it has none
+    if (first.size() == 0) {
+        return other.getValues().size() == 0;
+    }
+
+    // If only one child contributes, shorten
+    if (first.size() == 1) {
+        return children[first[0].second]->weakEquality(other);
+    }
+
+    // We have more than one value, other has to be a node to ensure equality
+    if (other.getType() != NODE) {
+        // Leaf cannot hold more than one value
+        return false;
+    }
+
+    // Other is node for sure
+    const Node& otherNode = static_cast<const Node&>(other);
+    for (size_t i = 0; i < otherNode.children.size(); ++i) {
+        set<MacAddress> childSet = otherNode.children[i]->getValues();
+        if (childSet.size() > 0) {
+            second.push_back({childSet, i});
+        }
+    }
+
+    // Quick check
+    if (first.size() != second.size()) {
+        return false;
+    }
+
+    // Sort first and second
+    auto comparator = [](const pair<set<MacAddress>, size_t>& a, const pair<set<MacAddress>, size_t>& b) -> bool {
+        return a.first < b.first;
+    };
+    sort(first.begin(), first.end(), comparator);
+    sort(second.begin(), second.end(), comparator);
+
+    // Check that both sets are equal
+    for (size_t i = 0; i < first.size(); ++i) {
+        if (first[i].first != second[i].first) {
+            return false;
+        }
+    }
+
+    // Sets are equal - therefore, at this level, it appears that the trees are weakly equal. Check children
+    for (size_t i = 0; i < first.size(); ++i) {
+        if (!children[first[i].second]->weakEquality(*otherNode.children[second[i].second])) {
+            return false;
+        }
+    }
+
+    // Weakly Equal
+    return true;
+}
+
+std::set<MacAddress> Node::getValues() const {
+    set<MacAddress> macSet;
+    for (const NodePt& child : children) {
+        set<MacAddress> childSet = child->getValues();
+        macSet.insert(childSet.begin(), childSet.end());
+    }
+    return macSet;
+}
+
+Network::MacAddress Node::findDirectValue() const {
+    for (const NodePt& child : children) {
+        if (child->getType() == LEAF) {
+            return *child->getValues().begin();
+        }
+    }
+    return MacAddress();
+}
+
+Leaf::Leaf(const MacAddress &value)
+        : value ( value )
+{
 }
 
 bool Leaf::operator==(const AbstractNode &other) const {
     return other.getType() == LEAF && value == static_cast<const Leaf&>(other).value;
 }
+
+bool Leaf::weakEquality(const AbstractNode &other) const {
+    return set<MacAddress>({value}) == other.getValues();
+};
 
 std::string Leaf::toDotEdges(size_t &labelNum) const {
     std::stringstream ss;
@@ -185,17 +275,21 @@ NodeType Leaf::getType() const {
     return LEAF;
 }
 
-Network::MacAddress Leaf::getValue() const  {
+MacAddress Leaf::getValue() const  {
     return value;
 }
 
-const Network::MacAddress &Leaf::getValueRef() const  {
+const MacAddress &Leaf::getValueRef() const  {
     return value;
 }
 
-Leaf* Leaf::findNode(const Network::MacAddress &p_value) {
+Leaf* Leaf::findNode(const MacAddress &p_value) {
     if (value == p_value) {
         return this;
     }
     return nullptr;
-};
+}
+
+set<MacAddress> Leaf::getValues() const {
+    return set<MacAddress>({value});
+}

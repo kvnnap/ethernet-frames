@@ -30,6 +30,7 @@ namespace Network {
 
         bool operator==(const MacAddress& other) const;
         bool operator!=(const MacAddress& other) const;
+        bool operator<(const MacAddress& other) const;
         bool isUnset() const;
 
         const Mac& getMacArray() const;

@@ -6,6 +6,7 @@
 #define NETWORK_DISCOVERY_NODE_H
 
 #include <vector>
+#include <set>
 #include <memory>
 #include <sstream>
 #include "Ethernet/MacAddress.h"
@@ -28,8 +29,12 @@ namespace Util {
         virtual ~AbstractNode();
 
         virtual NodeType getType() const = 0;
+
         // This is architectural equality, need to define another type
         virtual bool operator== (const AbstractNode& other) const = 0;
+        virtual bool weakEquality(const AbstractNode& other) const = 0;
+
+        virtual std::set<Network::MacAddress> getValues() const = 0;
         virtual Leaf* findNode(const Network::MacAddress& value) = 0;
         bool deleteValue(const Network::MacAddress& value);
 
@@ -58,7 +63,11 @@ namespace Util {
         NodeType getType() const override;
 
         virtual bool operator== (const AbstractNode& other) const override;
+        bool weakEquality(const AbstractNode& other) const override;
+
+        virtual std::set<Network::MacAddress> getValues() const override;
         Leaf* findNode(const Network::MacAddress& value) override;
+        Network::MacAddress findDirectValue() const;
         NodePt deleteChild(const AbstractNode* node);
         NodePt makeRoot(NodePt currentRoot);
 
@@ -85,8 +94,10 @@ namespace Util {
         NodeType getType() const override;
 
         virtual bool operator== (const AbstractNode& other) const override;
+        bool weakEquality(const AbstractNode& other) const override;
+
+        virtual std::set<Network::MacAddress> getValues() const override;
         Leaf* findNode(const Network::MacAddress& value) override;
-        //virtual bool deleteValue(const Network::MacAddress& value) override;
 
         virtual std::string toDotEdges(size_t& labelNum) const override;
 

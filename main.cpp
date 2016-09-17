@@ -224,7 +224,7 @@ int main(int argc, char *argv[])
             originalTopology->toDotFile("original-topology.dot");
             detectedTopology->toDotFile("detected-topology.dot");
 
-            cout << ((*originalTopology == *detectedTopology) ? "Topologies are exactly equal" : "Topologies are not exactly equal") << endl;
+            cout << (originalTopology->weakEquality(*detectedTopology) ? "Topologies are weakly equal" : "Topologies are not weakly equal") << endl;
 
         } else {
             LinuxNetworkInterface linuxNetworkInterface;

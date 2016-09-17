@@ -75,6 +75,15 @@ bool MacAddress::operator!=(const MacAddress &other) const {
     return !(*this == other);
 }
 
+bool MacAddress::operator<(const MacAddress &b) const {
+    for (size_t i = 0; i < getMacArray().size(); ++i) {
+        if (getMacArray().at(i) != b.getMacArray().at(i)) {
+            return getMacArray().at(i) < b.getMacArray().at(i);
+        }
+    }
+    return false;
+}
+
 ostream& Network::operator<<(ostream &strm, const MacAddress &mac) {
     char buff[18];
     const Mac& macAddr = mac.getMacArray();
