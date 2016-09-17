@@ -216,10 +216,16 @@ int main(int argc, char *argv[])
             NodePt originalTopology = simulatedNetworkInterface.getNetworkTree()->toTree();
             // Remove master from original topology, as this cannot (with all methods) be detected
             originalTopology->deleteValue(simulatedNetworkInterface.getNetDevices().at(masterIndex)->getMacAddress());
+
 //            Leaf * leaf = originalTopology->findNode(simulatedNetworkInterface.getNetDevices().at(5)->getMacAddress());
 //            originalTopology = leaf->getParent()->makeRoot(move(originalTopology));
 
             NodePt detectedTopology = runVirtualTopology(isPingBased, pingParameters, isGrouped, interfaceName, simulatedNetworkInterface, masterIndex, masterRunCount);
+
+            Leaf * leaf = detectedTopology->findNode(originalTopology->findDirectValue());
+            if (leaf != nullptr) {
+                //detectedTopology = leaf->getParent()->makeRoot(move(detectedTopology));
+            }
 
             originalTopology->toDotFile("original-topology.dot");
             detectedTopology->toDotFile("detected-topology.dot");

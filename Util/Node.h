@@ -36,6 +36,7 @@ namespace Util {
 
         virtual std::set<Network::MacAddress> getValues() const = 0;
         virtual Leaf* findNode(const Network::MacAddress& value) = 0;
+        virtual Network::MacAddress findDirectValue() const = 0;
         bool deleteValue(const Network::MacAddress& value);
 
         // To Dot string
@@ -67,7 +68,7 @@ namespace Util {
 
         virtual std::set<Network::MacAddress> getValues() const override;
         Leaf* findNode(const Network::MacAddress& value) override;
-        Network::MacAddress findDirectValue() const;
+        Network::MacAddress findDirectValue() const override;
         NodePt deleteChild(const AbstractNode* node);
         NodePt makeRoot(NodePt currentRoot);
 
@@ -98,6 +99,7 @@ namespace Util {
 
         virtual std::set<Network::MacAddress> getValues() const override;
         Leaf* findNode(const Network::MacAddress& value) override;
+        Network::MacAddress findDirectValue() const override;
 
         virtual std::string toDotEdges(size_t& labelNum) const override;
 

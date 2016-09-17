@@ -246,7 +246,7 @@ std::set<MacAddress> Node::getValues() const {
 Network::MacAddress Node::findDirectValue() const {
     for (const NodePt& child : children) {
         if (child->getType() == LEAF) {
-            return *child->getValues().begin();
+            return child->findDirectValue();
         }
     }
     return MacAddress();
@@ -292,4 +292,8 @@ Leaf* Leaf::findNode(const MacAddress &p_value) {
 
 set<MacAddress> Leaf::getValues() const {
     return set<MacAddress>({value});
+}
+
+Network::MacAddress Leaf::findDirectValue() const {
+    return value;
 }

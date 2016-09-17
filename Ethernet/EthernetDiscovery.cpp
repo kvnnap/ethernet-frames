@@ -515,6 +515,7 @@ void EthernetDiscovery::discoverNetwork() {
             slavesToTest.push_back(*++bottomSwitch.begin());
         }
     }
+    sort(slavesToTest.begin(), slavesToTest.end());
 
     {
         // Standard Facts are all constructed in 'facts' and 'sameSwitch'
