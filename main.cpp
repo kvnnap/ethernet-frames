@@ -79,6 +79,7 @@ NodePt runVirtualTopology( bool isPingBased, const EthernetDiscovery::PingParame
         cout << "Master Run: #" << (i + 1) << endl;
         try {
             topologyTree = ed[masterIndex].getToplogyTree();
+            ed[masterIndex].terminateSlaves();
         } catch (const exception& ex) {
             virtException = ex.what();
             cout << "Virtual Master Catch Block: " << ex.what() << endl;

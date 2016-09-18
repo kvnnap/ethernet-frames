@@ -724,7 +724,7 @@ Util::NodePt EthernetDiscovery::getToplogyTree() {
         discoverNetwork();
 
         // Terminate slaves
-        terminateSlaves();
+        //terminateSlaves();
 
         return indexedTopologyTree.toTree();
 
@@ -897,6 +897,10 @@ vector<size_t> EthernetDiscovery::hopCountToTopology(const Matrix<uint32_t> &hop
 
 // Data Clustering
 Matrix<uint32_t> EthernetDiscovery::rttToHopCount(const Matrix<float> &rttMatrix) const {
+
+    if (rttMatrix.getColumns() < 2) {
+        return Matrix<uint32_t>(rttMatrix.getRows(), rttMatrix.getColumns());
+    }
 
     // Store matrix in array
     vector<float> rttValues;
@@ -1072,23 +1076,14 @@ Util::NodePt EthernetDiscovery::getTreeFromParentBasedIndexTree(const std::vecto
 Util::NodePt EthernetDiscovery::getTreeFromParentBasedIndexTree(const std::vector<size_t> &parentBasedIndexTree,
                                                                 size_t nodeIndex) const {
     using namespace Util;
-    // Check if leaf
-    bool isLeaf = true;
-    for(size_t i = 0; i < parentBasedIndexTree.size(); ++i) {
-        if (parentBasedIndexTree[i] == nodeIndex) {
-            // Not leaf
-            isLeaf = false;
-            break;
-        }
-    }
 
-    if (isLeaf) {
+    if (nodeIndex < slaveMacs.size()) { // Leaf case
         return NodePt(new Leaf(slaveMacs.at(nodeIndex)));
     } else {
         NodePt node (new Node());
         //        static_cast<Node *>(node.get())->addChild(child->toTree());
         for(size_t i = 0; i < parentBasedIndexTree.size(); ++i) {
-            if (parentBasedIndexTree[i] == nodeIndex) {
+            if (i != nodeIndex && parentBasedIndexTree[i] == nodeIndex) {
                 // i is a child node
                 static_cast<Node *>(node.get())->addChild(getTreeFromParentBasedIndexTree(parentBasedIndexTree, i));
             }
