@@ -2,7 +2,6 @@
 // Created by kevin on 5/29/16.
 //
 
-#include <iostream>
 #include <sstream>
 #include <numeric>
 #include <map>
@@ -37,6 +36,7 @@ void EthernetDiscovery::clear() {
     lastMessage = EMPTY;
     testReceived = false;
     pingTime = 0.f;
+    isPingBased = false;
     groupSwitches = false;
 }
 
@@ -275,7 +275,8 @@ bool EthernetDiscovery::dataArrival(Network::EthernetFrame &ef, uint8_t *data, s
             ethernetSocket.setReceiveTimeout(0);
 
             // Our mean value has the required confidence or we reached the limit
-            cout << "Total Measurements: " << rttTimes.size() << " stdConfidence: " << stdConfidence << " confidenceIntervalThreshold: " << confidenceIntervalThreshold << endl;
+            /*cout << "Total Measurements: " << rttTimes.size() << " stdConfidence: " << stdConfidence <<
+                    " confidenceIntervalThreshold: " << confidenceIntervalThreshold << endl;*/
             EthernetFrame replyEf;
             replyEf.destinationMac = ef.sourceMac;
 
@@ -351,6 +352,17 @@ void EthernetDiscovery::getAllDevices() {
 
 void EthernetDiscovery::partitionBottomLayer() {
 
+    connectivitySet.clear();
+
+    // Build Connectivity Set
+    for (size_t i = 0; i < slaveMacs.size(); ++i) {
+        connectivitySet.push_back({i});
+    }
+
+    if (!groupSwitches) {
+        return;
+    }
+
     EthernetFrame ef;
     DataBuffer buffBegin (14);
     buffBegin[0] = BEGIN;
@@ -363,16 +375,6 @@ void EthernetDiscovery::partitionBottomLayer() {
     buffStart[1] = sizeof(MacAddress) * 2;
     // Mac to test with
     MacAddress::UA2.copyTo(buffStart.data() + 8);
-
-    connectivitySet.clear();
-    // Build Connectivity Set
-    for (size_t i = 0; i < slaveMacs.size(); ++i) {
-        connectivitySet.push_back({i});
-    }
-
-    if (!groupSwitches) {
-        return;
-    }
 
     for(size_t i = 0; i < connectivitySet.size(); ++i) {
 
@@ -550,7 +552,6 @@ void EthernetDiscovery::discoverNetwork() {
             }
         }
 
-        cout << "Number of facts before union: " << statCount << endl;
         for (const map<set<size_t>, set<size_t>>::value_type &fact : facts) {
             factList.push_back({fact.second, fact.first});
         }
@@ -666,19 +667,6 @@ void EthernetDiscovery::discoverNetwork() {
             }
         }
     }
-
-    // Debug info
-    cout << "Ordered Facts: " << endl;
-    for (const FactType& fact : factList) {
-        cout << "{";
-        for (size_t setId : fact.first) {
-            cout << setId;
-            if (setId != *--fact.first.end()) {
-                cout << ", ";
-            }
-        }
-        cout << "} < {" << *fact.second.begin() << ", " << *++fact.second.begin() << "}" << endl;
-    }
 }
 
 Util::NodePt EthernetDiscovery::getToplogyTree() {
@@ -686,49 +674,20 @@ Util::NodePt EthernetDiscovery::getToplogyTree() {
     // Algorithm 1
     getAllDevices();
 
-    // Print vector
-    cout << "Received From: " << slaveMacs.size() <<  endl;
-    for (size_t i = 0; i < slaveMacs.size(); ++i) {
-        cout << i << ") " << slaveMacs[i] << endl;
-    }
-
     if (isPingBased) {
         Matrix<float> rttMatrix = startPingBasedDiscovery();
-        cout << "RTT Matrix:" << endl << rttMatrix << endl;
         Mathematics::Matrix<uint32_t> hopCountMatrix = EthernetDiscovery::rttToHopCount(rttMatrix);
-        cout << "Hop Count Matrix: " << endl << hopCountMatrix << endl;
         vector<size_t> parent = EthernetDiscovery::hopCountToTopology(hopCountMatrix);
-        cout << "parent:" << endl;
-        for (size_t i = 0; i < parent.size(); ++i) {
-            cout << i << ") " << parent[i] << endl;
-        }
         return getTreeFromParentBasedIndexTree(parent);
     } else {
 
         // Algorithm 2
         partitionBottomLayer();
-        cout << "Connectivity Sets: " << endl;
-        //cout << *connectivityMatrix << endl;
-        for (size_t i = 0; i < connectivitySet.size(); ++i) {
-            cout << "Set " << i << ": ";
-            for (const size_t &node : connectivitySet[i]) {
-                cout << node;
-                if (&node != &*--connectivitySet[i].end()) {
-                    cout << ", ";
-                }
-            }
-            cout << endl;
-        }
 
         // Algorithm 4 - Our version of the idea
         discoverNetwork();
 
-        // Terminate slaves
-        //terminateSlaves();
-
         return indexedTopologyTree.toTree();
-
-        //cout << indexedTopologyTree << endl;
     }
 }
 
@@ -775,6 +734,11 @@ vector<vector<T>> EthernetDiscovery::combinations(const std::vector<T> &elems, s
 }
 
 vector<size_t> EthernetDiscovery::hopCountToTopology(const Matrix<uint32_t> &hopMatrix) {
+
+    if (hopMatrix.getColumns() == 0) {
+        return {0};
+    }
+
     unique_ptr<Matrix<uint32_t>> workHCPt (new Matrix<uint32_t>(hopMatrix));
     size_t N = hopMatrix.getColumns();
     vector<size_t> nodeNum (N);

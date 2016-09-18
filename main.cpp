@@ -37,30 +37,23 @@ using namespace Util;
 NodePt runVirtualTopology( bool isPingBased, const EthernetDiscovery::PingParameters& pingParameters, bool isGrouped,
                           const string& interfaceName,
                           SimulatedNetworkInterface& simulatedNetworkInterface,
+                          size_t numDevices,
                           size_t masterIndex,
                           size_t masterRunCount)
 {
-    const size_t numDevices = simulatedNetworkInterface.getNumNetDevices();
 
-    if (masterIndex >= numDevices) {
-        throw runtime_error ("Master index out of range");
-    }
 
-    // List Devices
-    for (size_t i = 0; i < numDevices; ++i) {
-        cout << i << ") " << simulatedNetworkInterface.getNetDevices()[i]->getMacAddress();
-        if (i == masterIndex) {
-            cout << " (Master)";
-        }
-        cout << endl;
-    }
-
+    // Lists for threads, ethernet socket and ethernet discovery for each thread but based on single interface instance
     vector<thread> threads;
     vector<EthernetSocket> es;
     vector<EthernetDiscovery> ed;
+
+    // Reserving is a must
     es.reserve(numDevices);
     ed.reserve(numDevices);
     threads.reserve(numDevices - 1);
+
+    // Assign objects and initialise slave threads
     for (size_t i = 0; i < numDevices; ++i) {
         es.emplace_back(interfaceName, simulatedNetworkInterface);
         ed.emplace_back(es[i]);
@@ -68,32 +61,42 @@ NodePt runVirtualTopology( bool isPingBased, const EthernetDiscovery::PingParame
             threads.emplace_back(&EthernetDiscovery::slave, ed[i]);
         }
     }
+
+    // Set Master's ethernet discovery configuration
     if (isPingBased) {
         ed[masterIndex].setPingParameters(pingParameters);
     } else {
         ed[masterIndex].setGroupedSwitches(isGrouped);
     }
-    string virtException;
+
+    // Run the simulation
+    string strException;
     NodePt  topologyTree;
-    for (size_t i = 0; i < masterRunCount; ++i) {
-        cout << "Master Run: #" << (i + 1) << endl;
-        try {
+
+    try {
+        for (size_t i = 0; i < masterRunCount; ++i) {
+            cout << "Master Run: #" << (i + 1) << endl;
             topologyTree = ed[masterIndex].getToplogyTree();
-            ed[masterIndex].terminateSlaves();
-        } catch (const exception& ex) {
-            virtException = ex.what();
-            cout << "Virtual Master Catch Block: " << ex.what() << endl;
-            ed[masterIndex].terminateSlaves();
         }
-        ed[masterIndex].clear();
+    } catch (const exception& ex) {
+        cout << "Virtual Master Catch Block (will throw again): " << ex.what() << endl;
+        strException = ex.what();
     }
+
+    // Send Broadcast message so that other threads exit from the slave() method normally
+    ed[masterIndex].terminateSlaves();
+
+    // Collect threads
     for (size_t i = 0; i < threads.size(); ++i) {
         threads[i].join();
     }
-    if (!virtException.empty()) {
-        throw runtime_error(virtException);
+
+    // If exceptions were encountered, throw them back here
+    if (!strException.empty()) {
+        throw runtime_error(strException);
     }
 
+    // Return the detected network topology tree
     return topologyTree;
 }
 
@@ -211,24 +214,26 @@ int main(int argc, char *argv[])
 
             const size_t masterIndex = vTopologyParameters.size() > 1 ? static_cast<uint32_t>(stoi(vTopologyParameters[1])) : 0;
             const size_t masterRunCount = vTopologyParameters.size() > 2 ? static_cast<uint32_t>(stoi(vTopologyParameters[2])) : 1;
+            if (masterRunCount == 0) {
+                throw runtime_error("Invalid virtual topology parameters passed in argument. Master Run Count should be > 0");
+            }
 
             SimulatedNetworkInterface simulatedNetworkInterface (NetworkNodeFactory().make(vTopologyParameters[0]));
+            const size_t numDevices = simulatedNetworkInterface.getNumNetDevices();
+            if (masterIndex >= numDevices) {
+                throw runtime_error ("Master index out of range");
+            }
 
             NodePt originalTopology = simulatedNetworkInterface.getNetworkTree()->toTree();
             // Remove master from original topology, as this cannot (with all methods) be detected
             originalTopology->deleteValue(simulatedNetworkInterface.getNetDevices().at(masterIndex)->getMacAddress());
 
-//            Leaf * leaf = originalTopology->findNode(simulatedNetworkInterface.getNetDevices().at(5)->getMacAddress());
-//            originalTopology = leaf->getParent()->makeRoot(move(originalTopology));
-
-            NodePt detectedTopology = runVirtualTopology(isPingBased, pingParameters, isGrouped, interfaceName, simulatedNetworkInterface, masterIndex, masterRunCount);
+            NodePt detectedTopology = runVirtualTopology(isPingBased, pingParameters, isGrouped, interfaceName, simulatedNetworkInterface, numDevices, masterIndex, masterRunCount);
 
             originalTopology->toDotFile("original-topology.dot");
             detectedTopology->toDotFile("detected-topology.dot");
-            detectedTopology->toDotFile("detected-topology.dot");
-
-            cout << (originalTopology->unrootedWeakEquality(detectedTopology) ? "Topologies are weakly equal" : "Topologies are not weakly equal") << endl;
-
+            cout << (originalTopology->unrootedWeakEquality(detectedTopology) ?
+                     "Topologies are weakly equal" : "Topologies are not weakly equal") << endl;
             detectedTopology->toDotFile("detected-rerooted-topology.dot");
 
         } else {
