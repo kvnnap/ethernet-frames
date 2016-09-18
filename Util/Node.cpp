@@ -56,6 +56,19 @@ bool AbstractNode::deleteValue(const MacAddress &value) {
     return false;
 }
 
+bool AbstractNode::unrootedWeakEquality(NodePt& other) const {
+    vector<Node *> otherNodes = other->getNodes();
+    // Test weak equality with each of the other's nodes
+    for (Node* otherNode : otherNodes) {
+        otherNode->makeRoot(other);
+        // Note: calling weakEquality(*otherNode) or weakEquality(*other) is exactly the same
+        if (weakEquality(*other)) {
+            return true;
+        }
+    }
+    return false;
+}
+
 NodeType Node::getType() const {
     return NODE;
 }
@@ -134,8 +147,8 @@ NodePt Node::deleteChild(const AbstractNode *node) {
     return NodePt();
 }
 
-NodePt Node::makeRoot(NodePt currentRoot) {
-    // Find path from this node to currentRoot
+void Node::makeRoot(NodePt& treeOwner) {
+    // Find path from this node to treeOwner
     vector<Node *> path;
     Node * node = this;
     do {
@@ -147,26 +160,29 @@ NodePt Node::makeRoot(NodePt currentRoot) {
     } while (node != nullptr);
 
     // Check
-    if (currentRoot.get() != static_cast<AbstractNode*>(path[path.size() - 1])) {
-        throw runtime_error("Root Mismatch: The currentRoot passed as parameter is not the actual currentRoot");
+    if (treeOwner.get() != static_cast<AbstractNode*>(path[path.size() - 1])) {
+        throw runtime_error("Root Mismatch: The treeOwner passed as parameter is not the root node of the tree");
     }
 
     // Make modifications
     for (ssize_t i = path.size() - 1; i > 0; --i) {
         // Gather nodes
-        Node * parent = path[i]; // currentRoot and parent are in sync
+        Node * parent = path[i]; // treeOwner and parent are in sync
         Node * child = path[i - 1];
 
         // Make child the parent of parent
         NodePt childST = parent->deleteChild(child);
         childST->setParent(nullptr);
-        static_cast<Node *>(childST.get())->addChild(move(currentRoot));
+        static_cast<Node *>(childST.get())->addChild(move(treeOwner));
 
         //
-        currentRoot = move(childST);
+        treeOwner = move(childST);
     }
 
-    return currentRoot;
+    // Sanity Check
+    if (treeOwner.get() != static_cast<AbstractNode*>(this)) {
+        throw runtime_error("Root Mismatch: Node has not become root");
+    }
 }
 
 bool Node::weakEquality(const AbstractNode &other) const {
@@ -243,13 +259,14 @@ std::set<MacAddress> Node::getValues() const {
     return macSet;
 }
 
-Network::MacAddress Node::findDirectValue() const {
+std::vector<Node *> Node::getNodes() {
+    vector<Node *> nodes;
+    nodes.push_back(this);
     for (const NodePt& child : children) {
-        if (child->getType() == LEAF) {
-            return child->findDirectValue();
-        }
+        vector<Node *> childNodes = child->getNodes();
+        nodes.insert(nodes.end(), childNodes.begin(), childNodes.end());
     }
-    return MacAddress();
+    return nodes;
 }
 
 Leaf::Leaf(const MacAddress &value)
@@ -294,6 +311,6 @@ set<MacAddress> Leaf::getValues() const {
     return set<MacAddress>({value});
 }
 
-Network::MacAddress Leaf::findDirectValue() const {
-    return value;
+vector<Node *> Leaf::getNodes() {
+    return vector<Node*>();
 }

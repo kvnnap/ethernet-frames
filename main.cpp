@@ -223,15 +223,13 @@ int main(int argc, char *argv[])
 
             NodePt detectedTopology = runVirtualTopology(isPingBased, pingParameters, isGrouped, interfaceName, simulatedNetworkInterface, masterIndex, masterRunCount);
 
-            Leaf * leaf = detectedTopology->findNode(originalTopology->findDirectValue());
-            if (leaf != nullptr) {
-                //detectedTopology = leaf->getParent()->makeRoot(move(detectedTopology));
-            }
-
             originalTopology->toDotFile("original-topology.dot");
             detectedTopology->toDotFile("detected-topology.dot");
+            detectedTopology->toDotFile("detected-topology.dot");
 
-            cout << (originalTopology->weakEquality(*detectedTopology) ? "Topologies are weakly equal" : "Topologies are not weakly equal") << endl;
+            cout << (originalTopology->unrootedWeakEquality(detectedTopology) ? "Topologies are weakly equal" : "Topologies are not weakly equal") << endl;
+
+            detectedTopology->toDotFile("detected-rerooted-topology.dot");
 
         } else {
             LinuxNetworkInterface linuxNetworkInterface;

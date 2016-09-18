@@ -33,10 +33,11 @@ namespace Util {
         // This is architectural equality, need to define another type
         virtual bool operator== (const AbstractNode& other) const = 0;
         virtual bool weakEquality(const AbstractNode& other) const = 0;
+        bool unrootedWeakEquality(NodePt& other) const;
 
         virtual std::set<Network::MacAddress> getValues() const = 0;
+        virtual std::vector<Node*> getNodes() = 0;
         virtual Leaf* findNode(const Network::MacAddress& value) = 0;
-        virtual Network::MacAddress findDirectValue() const = 0;
         bool deleteValue(const Network::MacAddress& value);
 
         // To Dot string
@@ -63,16 +64,16 @@ namespace Util {
 
         NodeType getType() const override;
 
-        virtual bool operator== (const AbstractNode& other) const override;
+        bool operator== (const AbstractNode& other) const override;
         bool weakEquality(const AbstractNode& other) const override;
 
-        virtual std::set<Network::MacAddress> getValues() const override;
+        std::set<Network::MacAddress> getValues() const override;
+        std::vector<Node*> getNodes() override;
         Leaf* findNode(const Network::MacAddress& value) override;
-        Network::MacAddress findDirectValue() const override;
         NodePt deleteChild(const AbstractNode* node);
-        NodePt makeRoot(NodePt currentRoot);
+        void makeRoot(NodePt& treeOwner);
 
-        virtual std::string toDotEdges(size_t& labelNum) const override;
+        std::string toDotEdges(size_t& labelNum) const override;
 
         const std::vector<NodePt>& getChildren() const;
         size_t getChildrenSize() const;
@@ -84,7 +85,6 @@ namespace Util {
 }
 
 namespace Util {
-    //template <class T>
     class Leaf
         : public AbstractNode
     {
@@ -94,20 +94,19 @@ namespace Util {
 
         NodeType getType() const override;
 
-        virtual bool operator== (const AbstractNode& other) const override;
+        bool operator== (const AbstractNode& other) const override;
         bool weakEquality(const AbstractNode& other) const override;
 
-        virtual std::set<Network::MacAddress> getValues() const override;
+        std::set<Network::MacAddress> getValues() const override;
+        std::vector<Node*> getNodes() override;
         Leaf* findNode(const Network::MacAddress& value) override;
-        Network::MacAddress findDirectValue() const override;
 
-        virtual std::string toDotEdges(size_t& labelNum) const override;
+        std::string toDotEdges(size_t& labelNum) const override;
 
         Network::MacAddress getValue() const;
         const Network::MacAddress& getValueRef() const;
 
     private:
-
         Network::MacAddress value;
     };
 }
