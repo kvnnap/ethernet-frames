@@ -36,15 +36,15 @@ namespace Network {
 
         void send(EthernetFrame& ef, const DataBuffer& data);
         ssize_t receive(ISocketListener * iSocketListener, const MacAddress * destination = nullptr, const MacAddress * source = nullptr);
+
+        // Hotfix
+        void setSendDelayAmount(uint32_t p_sendDelayAmount);
     private:
         std::string interfaceName;
         int sockfd;
         struct sockaddr_ll socket_address; // Used for index
         MacAddress interfaceMac;
         DataBuffer sendBuffer, receiveBuffer;
-
-        //
-        ISocketListener * iSocketListener;
 
         INetworkInterface & netInterface;
 

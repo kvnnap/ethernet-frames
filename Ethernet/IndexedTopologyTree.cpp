@@ -36,7 +36,9 @@ void IndexedTopologyNode::deleteChild(size_t childIndex) {
 Util::NodePt IndexedTopologyNode::toTree(const IndexedTopologyTree &indexedTopologyTree) const {
     using namespace Util;
     if (isLeaf()) {
-        return NodePt(new Leaf(indexedTopologyTree.getMacArray().at(val)));
+        return NodePt(isRoot() ?
+                      static_cast<AbstractNode*>(new Node()) :
+                      static_cast<AbstractNode*>(new Leaf(indexedTopologyTree.getMacArray().at(val))));
     } else {
         NodePt node (new Node());
         for (size_t childIndex : children) {

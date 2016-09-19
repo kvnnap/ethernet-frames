@@ -132,7 +132,7 @@ int main(int argc, char *argv[])
     bool isSender = true;
     bool isPingBased = false;
     bool isVirtual = false;
-    bool isGrouped = false;
+    bool isGrouped = true;
     bool terminateSlaves = false;
     bool help = false;
 
@@ -144,7 +144,7 @@ int main(int argc, char *argv[])
             {"receiver",  no_argument,       nullptr, 'r'},
             {"delay",     optional_argument, nullptr, 'd'},
             {"virtual",   required_argument, nullptr, 'v'},
-            {"grouped",   no_argument,       nullptr, 'g'},
+            {"ungrouped", no_argument,       nullptr, 'u'},
             {"testruns",  required_argument, nullptr, 't'},
             {"quitslaves",no_argument,       nullptr, 'q'},
             {"help",      no_argument,       nullptr, 'h'},
@@ -179,8 +179,8 @@ int main(int argc, char *argv[])
                 isVirtual = true;
                 virtualTopologyParameters = optarg;
                 break;
-            case 'g':
-                isGrouped = true;
+            case 'u':
+                isGrouped = false;
                 break;
             case 't': {
                 int tRuns = optarg ? stoi(optarg) : 0;
@@ -199,11 +199,12 @@ int main(int argc, char *argv[])
             case '?':
                 help = true;
                 cout << "Unknown option or missing argument: "
-                << (char)c << " : " << optarg << endl;
+                << (char)c << " : " << (optarg ? optarg : "No Argument Details") << endl;
+                break;
             default:
                 help = true;
                 cout << "Unknown Error while Parsing Arguments- " <<
-                (char)c << " : " << optarg << endl;
+                (char)c << " : " << (optarg ? optarg : "No Argument Details") << endl;
         }
     }
 
@@ -216,8 +217,9 @@ int main(int argc, char *argv[])
         << "\t--receiver - Sets as receiver" << endl
         << "\t--delay=[32] - (HotFix) Delays the send Method, fixing packet re-ordering. Only has effect on non-virtual runs" << endl
         << "\t--virtual=[Xml:netTopology.xml,masterIndex,masterRunCount] - Simulate getToplogyTree and receivers using a virtual network topology" << endl
-        << "\t--grouped - Group leaf nodes on the same switch first before performing Algorithm 3/4 (incomplete graph resolution for this)" << endl
-        << "\t--test=[0] - 0 = validate simulated vs detected, 1 = eth vs ping " << endl
+        << "\t--ungrouped - Do not group leaf nodes on the same switch first before performing Algorithm 3/4" << endl
+        << "\t--test=[numOfTests] - Tests for eth vs ping" << endl
+        << "\t--quitslaves - Exit slaves after finishing" << endl
         << "\t--help - Shows this Usage Information" << endl;
         return EXIT_SUCCESS;
     }
@@ -277,6 +279,8 @@ int main(int argc, char *argv[])
                     saveCompareAndPrintResult(originalTopology, detectedTopology, run, pass, fail,
                                               "original-topology.dot", "detected-topology.dot");
                 }
+                cout << "Pass: " << pass << " Fail: " << fail << " Total: " << (pass + fail)
+                     << " Success Rate: " << ((pass * 100.f) / (pass + fail)) << "%" << endl;
             } else {
                 SimulatedNetworkInterface simulatedNetworkInterface(
                         NetworkNodeFactory().make(vTopologyParameters[0]));
@@ -299,12 +303,15 @@ int main(int argc, char *argv[])
                 // Compare eth vs Ping
                 if (testRuns > 0) {
                     for (size_t run = 0; run < testRuns; ++run) {
+
                         // Get eth result
+                        es.setSendDelayAmount(sendDelayAmount);
                         ed.clear();
                         ed.setGroupedSwitches(isGrouped);
                         NodePt ethTree = ed.getToplogyTree();
 
                         // Get Ping result
+                        es.setSendDelayAmount(0);
                         ed.clear();
                         ed.setPingParameters(pingParameters);
                         NodePt pingTree = ed.getToplogyTree();
@@ -313,6 +320,8 @@ int main(int argc, char *argv[])
                         saveCompareAndPrintResult(ethTree, pingTree, run, pass, fail, "eth-topology.dot",
                                                   "ping-topology.dot");
                     }
+                    cout << "Pass: " << pass << " Fail: " << fail << " Total: " << (pass + fail)
+                         << " Success Rate: " << ((pass * 100.f) / (pass + fail)) << "%" << endl;
                 } else {
                     if (isPingBased) {
                         ed.setPingParameters(pingParameters);

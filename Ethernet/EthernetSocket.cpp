@@ -173,11 +173,7 @@ const MacAddress &EthernetSocket::getInterfaceMac() const {
     return interfaceMac;
 }
 
-/*void EthernetSocket::setReceiveDataHandler(ISocketListener *iSockListener) {
-    iSocketListener = iSockListener;
-}*/
-
-
-
-
-
+// Hotfix
+void EthernetSocket::setSendDelayAmount(uint32_t p_sendDelayAmount) {
+    sendDelayAmount = p_sendDelayAmount;
+}
