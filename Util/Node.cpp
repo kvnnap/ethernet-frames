@@ -220,6 +220,11 @@ bool Node::weakEquality(const AbstractNode &other) const {
         }
     }
 
+    // If only one child contributes, shorten
+    if (second.size() == 1) {
+        return weakEquality(*otherNode.children[second[0].second]);
+    }
+
     // Quick check
     if (first.size() != second.size()) {
         return false;
